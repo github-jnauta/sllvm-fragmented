@@ -1,14 +1,21 @@
 ##################
 # MANUAL entries #
 ##################
+# Do not include raw data in the repo
 /data/*
 /data/*/
 /supplementary/data/*
 /supplementary/data/*/
+# Do not include non-binary files, i.e. images
 /figures/*
 /figures/*/
+# Do not include virtual python environment specific files
 /population/
+# Do not include settings for visual studio code
 /.vscode/
+# Do not include specific files
+/bash/variables.sh
+/bash/get_dir.py
 
 #######################
 # TEMPLATE .gitignore #
