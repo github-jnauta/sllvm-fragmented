@@ -25,8 +25,8 @@ while [[ $# -gt 0 ]]
 done 
 # Specify action
 DISTRIBUTE=false         # Distribute code among nodes, if using -ssh
-EXECUTE=false            # Run the code in parallel using GNU parallel
-GETDATA=false            # Retrieve data from the modes through rsync
+EXECUTE=true            # Run the code in parallel using GNU parallel
+GETDATA=true            # Retrieve data from the modes through rsync
 
 ## Extract variables
 if [ $SSH ]; then 
@@ -38,15 +38,16 @@ if [ $SSH ]; then
         echo "Distributing code on available nodes..."
         # Archive the codebase
         cd; echo $CODEDIR
-        tar --exclude='out/*' --exclude='data/*' --exclude='population/*' --exclude='results/*' --exclude='supplementary/data/' --exclude='.git/*' -czf population_dynamics.tar.gz population_dynamics/
+        tar --exclude='out/*' --exclude='data/*' --exclude='population/*' --exclude='results/*' --exclude='supplementary/data/' --exclude='.git/*' -czf sllvm-fragmented.tar.gz sllvm-fragmented/
         # Copy the archived codebase
         for node in ${nodes[@]}; do 
-            if "$node" != "$current" ]; then    # Do not copy to the current node
+            if [ "$node" != "$current" ]; then    # Do not copy to the current node
                 echo $node; scp -q ${CODEDIR}.tar.gz ${node}:${LOCALDIR}
             fi 
         done 
         # Unpack the codebase
-        parallel --nonall -S $noboss_nodes 'tar -xzf {1}.tar.gz' ::: ${CODEDIR}
+	echo "Unpacking..." 
+        parallel --nonall -S $noboss_nodes_string 'tar -xzf {1}.tar.gz' ::: ${CODEDIR}
     fi 
 else
     echo "Executing script locally"
@@ -61,20 +62,20 @@ mkdir -p $DATADIR
 echo "${seeds[@]}" > $DATADIR/seeds.txt
 echo "${lambda[@]}" > $DATADIR/lambda.txt
 
-
 if [ $SSH ]; then 
     ## EXECUTE Python script in parallel on all available CPU threads
-    if [ $EXECUTE ]; then 
-        parallel -S $noboss_nodes_string --sshdelay 0.1 --delay 0.1 "
+    if $EXECUTE; then 
+	echo "Executing code, #seeds $NSEEDS"
+        parallel -S $nodes_string --sshdelay 0.1 --delay 0.1 "
         cd {1};
         python run_system.py --lambda {2} --seed {3};
         " ::: $CODEDIR ::: ${lambda[@]} ::: ${seeds[@]}
     fi 
     ## RETRIEVE data 
-    if [ $GETDATA ]; then 
-        for node in ${noboss_nodes_array}; do 
+    if $GETDATA; then 
+        for node in ${noboss_nodes[@]}; do 
             echo $node; 
-            rsync --av --include='*.npy' $node:${DATADIR} ${DATADIR}/
+            rsync -av --include='*.npy' $node:${DATADIR} ${DATADIR}/
         done 
     fi
 fi 

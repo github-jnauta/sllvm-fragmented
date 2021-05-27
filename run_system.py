@@ -22,9 +22,10 @@ if __name__ == "__main__":
         _dir = args.ddir+"sllvm/{L:d}x{L:d}/".format(L=2**args.m)
         if not os.path.exists(_dir):
             os.makedirs(_dir)
-        suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.3f}_lambda{:.3f}_sig{:.3f}_a{:.3f}".format(
+        suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.3f}_lambda{:.3f}_sig{:.3f}_a{:.3f}_seed{:d}".format(
             args.T, args.N0, args.M0, args.H, args.rho, 
-            args.mu, args.lambda_, args.sigma, args.alpha
+            args.mu, args.lambda_, args.sigma, args.alpha,
+            args.seed
         )
         # Save
         for key, item in output.items():

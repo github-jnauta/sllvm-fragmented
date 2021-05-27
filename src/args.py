@@ -9,7 +9,7 @@ class Args():
         parser = argparse.ArgumentParser("Specify specific variables")
         ## Landscape variables
         parser.add_argument(
-            '--m', dest='m', type=int, default=8,
+            '--m', dest='m', type=int, default=7,
             help='level of resolution that defines the LxL lattice with L=2**m'
         )
         parser.add_argument(
