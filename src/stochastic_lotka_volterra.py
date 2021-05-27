@@ -85,6 +85,7 @@ def nb_run_system(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             Levy walk parameter of the predators' movement
     """
     L, _ = sites.shape 
+    dmeas = T // nmeasures
     ## Initialize constants
     delta_idx = np.array([1, -1, L, -L], dtype=np.int64)
     delta_idx_2D = np.array([[0,1], [0,-1], [1,0], [-1,0]], dtype=np.int64)
@@ -127,12 +128,15 @@ def nb_run_system(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     ## Allocate arrays for storing measures
     prey_population = np.zeros(nmeasures, dtype=np.int64)
     pred_population = np.zeros(nmeasures, dtype=np.int64)
-    lattice_configuration = np.zeros((L*L, T), dtype=np.int64)
+    lattice_configuration = np.zeros((L*L, nmeasures), dtype=np.int64)
+    # predator_positions = np.zeros((N0,T), dtype=np.int64)
 
     ## Run the stochastic Lotka-Volterra system
     for t in range(T):
-        # Store the current state of the lattice
-        lattice_configuration[:,t] = lattice.copy()
+        if t % dmeas == 0:
+            # Store the current state of the lattice
+            imeas = t // dmeas
+            lattice_configuration[:,imeas] = lattice.copy()
         # Stop the simulation if either of the populations has become extinct
         if M == 0 or N == 0:
             break
@@ -194,16 +198,20 @@ def nb_run_system(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                     
                     ## (iii) continue the current (or just started) flight
                     # Update position
+                    # NOTE: The lattice is updated below (iv)
                     lattice[idx] -= 1
                     # Determine new 1D index using periodic boundary conditions
                     _i = ( idx // L + delta_idx_2D[didx[_pred_id]][0] ) % L
                     _j = ( idx % L + delta_idx_2D[didx[_pred_id]][1] ) % L 
                     new_idx = _i * L + _j
-
-                    # NOTE: The lattice is updated below (iv)
+                    # Ensure single occupancy
+                    if lattice[new_idx] > 0:
+                        new_idx = idx                   # Stay put
+                        curr_length[_pred_id] = 0       # Truncate current flight
+                    else:                        
+                        curr_length[_pred_id] += 1      # Increment current path length
+                    # Update predator position
                     predator_pos[_pred_id] = new_idx
-                    # Increment current path length
-                    curr_length[_pred_id] += 1
                     # End current flight if path length exceeds the sampled length
                     if curr_length[_pred_id] > flight_length[_pred_id]:
                         curr_length[_pred_id] = 0 
@@ -234,12 +242,11 @@ def nb_run_system(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                             occupied_sites = np.append(occupied_sites, new_idx)
                             K += 1
                     else:
+                        # NOTE: Update lattice as mentioned above
                         # No prey, so predator just moves there
                         lattice[new_idx] += 1
                         # Update site index occupied by the predator
                         occupied_sites[_k] = new_idx
-
-
     return lattice_configuration, None
 
 #################################
@@ -263,6 +270,7 @@ class SLLVM(object):
         )
         outdict = {}
         outdict['sites'] = sites 
+        # outdict['predator_positions'] = output[0]
         outdict['lattice'] = output[0]
         return outdict
 

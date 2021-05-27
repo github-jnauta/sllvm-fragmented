@@ -9,7 +9,7 @@ class Args():
         parser = argparse.ArgumentParser("Specify specific variables")
         ## Landscape variables
         parser.add_argument(
-            '--m', dest='m', type=int, default=7,
+            '--m', dest='m', type=int, default=8,
             help='level of resolution that defines the LxL lattice with L=2**m'
         )
         parser.add_argument(
@@ -20,40 +20,40 @@ class Args():
             '--H', dest='H', type=float, default=0.5, help='Hurst exponent'
         )
         parser.add_argument(
-            '--rho', dest='rho', type=float, default=0.1, help='level of occupancy'
+            '--rho', dest='rho', type=float, default=0.05, help='level of occupancy'
         )
         parser.add_argument(
-            '--M0', dest='M0', type=int, default=256, 
+            '--M0', dest='M0', type=int, default=-1, 
             help='initial number of prey (resources)'
         )
         ## Resource variables
         parser.add_argument(
-            '--sigma', dest='sigma', type=float, default=0.5,
+            '--sigma', dest='sigma', type=float, default=0.2,
             help='specify the reproduction rate of the prey (resources)'
         )
         ## Forager variables
         parser.add_argument(
-            '--T', dest='T', type=int, default=1000, help='number of Monte-Carlo steps'
+            '--T', dest='T', type=int, default=250, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
             '--alpha', dest='alpha', type=float, default=2., 
             help='specify Levy parameter of the forager(s)'
         )
         parser.add_argument(
-            '--mu', dest='mu', type=float, default=0.05,
+            '--mu', dest='mu', type=float, default=0.02,
             help='specify predator mortality rate'
         )
         parser.add_argument(
-            '--lambda', dest='lambda_', type=float, default=0.05,
+            '--lambda', dest='lambda_', type=float, default=0.2,
             help='specify predator reproduction rate'
         )
         parser.add_argument(
-            '--N0', dest='N0', type=int, default=64,
+            '--N0', dest='N0', type=int, default=256,
             help='initial number of predators (foragers)'
         )
         ## Random number variables
         parser.add_argument(
-            '--seed', dest='seed', type=int, default=1
+            '--seed', dest='seed', type=int, default=42
         )
         ## Numerical variables
         parser.add_argument(
