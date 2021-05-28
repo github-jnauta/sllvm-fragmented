@@ -82,6 +82,10 @@ class Args():
             '--ddir', dest='ddir', type=str, default='data/',
             help='specify directory for output data'
         )
+        parser.add_argument(
+            '--rdir', dest='rdir', type=str, default='results/',
+            help='specify directory for output data'
+        )
         
         # Parse arguments
         self.args = parser.parse_args()
