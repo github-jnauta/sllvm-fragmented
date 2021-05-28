@@ -24,7 +24,7 @@ while [[ $# -gt 0 ]]
     esac 
 done 
 # Specify action
-DISTRIBUTE=false         # Distribute code among nodes, if using -ssh
+DISTRIBUTE=true         # Distribute code among nodes, if using -ssh
 EXECUTE=true            # Run the code in parallel using GNU parallel
 GETDATA=true            # Retrieve data from the modes through rsync
 
