@@ -16,6 +16,8 @@
 # Do not include specific files
 /bash/variables.sh
 /bash/get_dir.py
+# Do not include output files
+/out/*
 
 #######################
 # TEMPLATE .gitignore #
