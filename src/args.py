@@ -9,7 +9,7 @@ class Args():
         parser = argparse.ArgumentParser("Specify specific variables")
         ## Landscape variables
         parser.add_argument(
-            '--m', dest='m', type=int, default=9,
+            '--m', dest='m', type=int, default=8,
             help='level of resolution that defines the LxL lattice with L=2**m'
         )
         parser.add_argument(
@@ -17,7 +17,7 @@ class Args():
             help='standard deviation of the Gaussian distribution'
         )
         parser.add_argument(
-            '--H', dest='H', type=float, default=0.5, help='Hurst exponent'
+            '--H', dest='H', type=float, default=0.9, help='Hurst exponent'
         )
         parser.add_argument(
             '--rho', dest='rho', type=float, default=0.05, help='level of occupancy'
@@ -28,7 +28,7 @@ class Args():
         )
         ## Resource variables
         parser.add_argument(
-            '--sigma', dest='sigma', type=float, default=0.2,
+            '--sigma', dest='sigma', type=float, default=0.01,
             help='specify the reproduction rate of the prey (resources)'
         )
         ## Forager variables
@@ -36,7 +36,7 @@ class Args():
             '--T', dest='T', type=int, default=1000, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
-            '--alpha', dest='alpha', type=float, default=2., 
+            '--alpha', dest='alpha', type=float, default=3., 
             help='specify Levy parameter of the forager(s)'
         )
         parser.add_argument(
@@ -44,11 +44,11 @@ class Args():
             help='specify predator mortality rate'
         )
         parser.add_argument(
-            '--lambda', dest='lambda_', type=float, default=0.2,
+            '--lambda', dest='lambda_', type=float, default=0.01,
             help='specify predator reproduction rate'
         )
         parser.add_argument(
-            '--N0', dest='N0', type=int, default=1024,
+            '--N0', dest='N0', type=int, default=256,
             help='initial number of predators (foragers)'
         )
         ## Random number variables
@@ -61,7 +61,7 @@ class Args():
             help='specify the number of repetitions per resource landscape'
         )
         parser.add_argument(
-            '--k', dest='nmeasures', type=int, default=250,
+            '--k', dest='nmeasures', type=int, default=50,
             help='specify the number of times population size needs to be measured'
         )
         ## Boolean variables

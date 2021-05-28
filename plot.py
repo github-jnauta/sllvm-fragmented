@@ -50,7 +50,7 @@ class Plotter():
     def plot_fragmented_lattice(self, args):
         _dir = args.ddir+"landscapes/"
         # Load lattice(s)
-        _H = [0.1, 0.5, 0.9]
+        _H = [0, 0.01, 0.05]
         L = 2**args.m
         # Initialize figure
         fig, axes = plt.subplots(1, len(_H), figsize=(3*len(_H), 3), tight_layout=True)
@@ -123,16 +123,18 @@ class Plotter():
         _alpha = [1, 2, 3]
         def get_image(alpha):
             # Load lattice
-            suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.3f}_lambda{:.3f}_sig{:.3f}_a{:.3f}".format(
-                args.T, args.N0, args.M0, args.H, args.rho, args.mu, args.lambda_, args.sigma, alpha
+            suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.3f}_sig{:.3f}_a{:.3f}_seed{:d}".format(
+                args.T, args.N0, args.M0, args.H, args.rho, args.mu, args.lambda_, args.sigma, alpha, args.seed
             )
             lattice = np.load(_dir+"lattice{suffix:s}.npy".format(suffix=suffix))
-            sites = np.load(_dir+"sites{suffix:s}.npy".format(suffix=suffix))
+            # pred_population = np.load(_dir+"pred_population{suffix:s}.npy".format(suffix=suffix))
+            # print(pred_population)
+            # sites = np.load(_dir+"sites{suffix:s}.npy".format(suffix=suffix))
             # Reshape
             L_sq, _ = lattice.shape
             L = int(np.sqrt(L_sq))
-            lattice = lattice.reshape(L,L,args.nmeasures)
-            sites = sites.reshape(L,L)
+            lattice = lattice.reshape(L,L,args.nmeasures+1)
+            # sites = sites.reshape(L,L)
             # Specify the colormap
             color_map = {
                 -1: np.array([255, 0, 0]),      # prey, red
@@ -142,13 +144,13 @@ class Plotter():
             }
             # Generate the image to be shown with correct colormap
             lattice[lattice>=1] = 2
-            im = np.ndarray(shape=(L,L,args.nmeasures,3), dtype=np.int64)
+            im = np.ndarray(shape=(L,L,args.nmeasures+1,3), dtype=np.int64)
             for i in range(0,L):
                 for j in range(0,L):
-                    im[i,j,:,:] = color_map[sites[i,j]]
-                    for t in range(args.nmeasures):
-                        if lattice[i,j,t]:
-                            im[i,j,t,:] = color_map[lattice[i,j,t]] 
+                    # im[i,j,:,:] = color_map[sites[i,j]]
+                    for t in range(args.nmeasures+1):
+                        # if lattice[i,j,t]:
+                        im[i,j,t,:] = color_map[lattice[i,j,t]]
             return im 
         # Initialize figure
         fig, axes = plt.subplots(1, 3, figsize=(3*len(_alpha),3), tight_layout=True)
@@ -168,7 +170,7 @@ class Plotter():
                 ims[i].set_array(images[i][:,:,t,:])
             return ims 
 
-        anim = animation.FuncAnimation(fig, update, interval=25, frames=args.nmeasures)
+        anim = animation.FuncAnimation(fig, update, interval=25, frames=args.nmeasures+1)
         if not args.save:
             plt.show()
         else:
@@ -217,27 +219,32 @@ class Plotter():
     def plot_population_dynamics(self, args):
         L = 2**args.m
         _dir = args.ddir+"sllvm/{L:d}x{L:d}/".format(L=L)
-        # Load data
-        suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.3f}_sig{:.3f}_a{:.3f}_seed{:d}".format(
-            args.T, args.N0, args.M0, args.H, args.rho, args.mu, args.lambda_, args.sigma, args.alpha, args.seed
-        )
-        _N = np.load(_dir+"pred_population{suffix:s}.npy".format(suffix=suffix)) 
-        _M = np.load(_dir+"prey_population{suffix:s}.npy".format(suffix=suffix)) 
-        N = np.mean(_N, axis=1) / L**2
-        M = np.mean(_M, axis=1) / L**2
+        # Specify variables
+        _alpha = [1, 2, 3]
         # Initialize figure
         fig, ax = plt.subplots(1,1, figsize=(6, 4), tight_layout=True)
         # Plot
-        xax = args.T / args.nmeasures * np.arange(args.nmeasures+1)
-        ax.plot(
-            xax, N, color='k', linewidth=0.85, label=r"$N(t)$"
-        )
-        ax.plot(
-            xax, M, color='k', linestyle='--', linewidth=0.85, label=r"$M(t)$"
-        )
+        for i, alpha in enumerate(_alpha):
+            suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}_seed{:d}".format(
+                args.T, args.N0, args.M0, args.H, args.rho, args.mu, args.lambda_, args.sigma, alpha, args.seed
+            )
+            _N = np.load(_dir+"pred_population{suffix:s}.npy".format(suffix=suffix)) 
+            _M = np.load(_dir+"prey_population{suffix:s}.npy".format(suffix=suffix)) 
+            N = np.mean(_N, axis=1) / L**2
+            M = np.mean(_M, axis=1) / L**2
+            # N = _N / L**2 
+            # M = _M / L**2
+            xax = args.T / args.nmeasures * np.arange(args.nmeasures+1)
+            ax.plot(
+                xax, N, color=colors[i], linestyle='-', linewidth=0.85
+            )
+            ax.plot(
+                xax, M, color=colors[i], linestyle='--', linewidth=0.85, 
+                label=r"$\alpha=%.1f$"%(alpha)
+            )
         # Limits, labels, etc
         ax.set_xlim(0, args.T)
-        ax.set_ylim(0, 0.1)
+        ax.set_ylim(bottom=0)
         ax.set_xlabel(r"$t$", fontsize=14)
         ax.set_ylabel(r"population", fontsize=14)
         ax.legend(loc='upper right', fontsize=12, frameon=False)

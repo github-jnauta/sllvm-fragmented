@@ -57,10 +57,12 @@ fi
 ## DEFINE variables and sequences
 #  Additionally store these variables in files for later use (e.g. analysis, plotting)
 seeds=$(seq 1 1 $NSEEDS)
-lambda=$(seq 0 0.05 1)
+# lambda=$(seq 0 0.05 1)
+python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-4,0,15), fmt="%.4e")'
 mkdir -p $DATADIR
 echo "${seeds[@]}" > $DATADIR/seeds.txt
-echo "${lambda[@]}" > $DATADIR/lambda.txt
+# echo "${lambda[@]}" > $DATADIR/lambda.txt
+mapfile -t lambda < lambda.txt; mv lambda.txt $DATADIR
 
 if [ $SSH ]; then 
     ## EXECUTE Python script in parallel on all available CPU threads
