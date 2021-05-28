@@ -9,7 +9,7 @@ class Args():
         parser = argparse.ArgumentParser("Specify specific variables")
         ## Landscape variables
         parser.add_argument(
-            '--m', dest='m', type=int, default=7,
+            '--m', dest='m', type=int, default=9,
             help='level of resolution that defines the LxL lattice with L=2**m'
         )
         parser.add_argument(
@@ -33,14 +33,14 @@ class Args():
         )
         ## Forager variables
         parser.add_argument(
-            '--T', dest='T', type=int, default=250, help='number of Monte-Carlo steps'
+            '--T', dest='T', type=int, default=1000, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
             '--alpha', dest='alpha', type=float, default=2., 
             help='specify Levy parameter of the forager(s)'
         )
         parser.add_argument(
-            '--mu', dest='mu', type=float, default=0.02,
+            '--mu', dest='mu', type=float, default=-1,
             help='specify predator mortality rate'
         )
         parser.add_argument(
@@ -48,7 +48,7 @@ class Args():
             help='specify predator reproduction rate'
         )
         parser.add_argument(
-            '--N0', dest='N0', type=int, default=256,
+            '--N0', dest='N0', type=int, default=1024,
             help='initial number of predators (foragers)'
         )
         ## Random number variables
@@ -61,7 +61,7 @@ class Args():
             help='specify the number of repetitions per resource landscape'
         )
         parser.add_argument(
-            '--k', dest='nmeasures', type=int, default=100,
+            '--k', dest='nmeasures', type=int, default=250,
             help='specify the number of times population size needs to be measured'
         )
         ## Boolean variables
@@ -85,3 +85,9 @@ class Args():
         
         # Parse arguments
         self.args = parser.parse_args()
+
+        ## Check some assertations and/or adapt accordingly
+        # Set mortality rate
+        self.args.mu = 1/2**self.args.m if self.args.mu == -1 else self.args.mu
+        # Check if number of measurements is allowed
+        assert((self.args.T/self.args.nmeasures).is_integer()), "Invalid number of measurements"

@@ -30,7 +30,7 @@ def nb_sample_cdf(cdf):
     rand = np.random.random() 
     for i in range(len(cdf)):
         if rand < cdf[i]:
-            return i + 1
+            return i + 1            
 
 # Specific functions
 @numba.jit(nopython=True, cache=True)
@@ -58,8 +58,8 @@ def nb_get_1D_neighbors(idx, L):
     return neighbors_1D
 
 @numba.jit(nopython=True, cache=True)
-def nb_run_system(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
-    """ Runs the stochastic Lotka-Volterra system
+def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
+    """ Runs the stochastic lattice Lotka-Volterra model
         While the lattice is a 2D (square) lattice, for speed we first convert everyting
         to a 1D lattice, where neighbors and periodic boundary conditions properly need
         to be taken into account.
@@ -67,12 +67,13 @@ def nb_run_system(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
         Parameters
         ----------
         T : np.int64
-            The number of Monte Carlo steps
+            The number of Monte Carlo time steps
         N0 : np.int64
             The initial number of predators (foragers)
         M0 : np.int64
             The initial number of prey (resources)
-            Note that M0=min(M0,ρL²), where ρL² the number of sites eligible for resources
+            Note that M0=min(M0,ρL²), where ρL² the number of sites eligible for prey
+            If M0 = -1, then all eligible sites are initially filled with prey
         sites : np.array((L,L),dtype=np.int64)
             L x L numpy array of eligible sites for prey (1) and empty sites (0)
         mu : np.float64
@@ -83,6 +84,8 @@ def nb_run_system(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             Reproduction rate of the prey (resources)
         alpha : np.float64
             Levy walk parameter of the predators' movement
+        nmeasures : np.int64
+            Number of times populations are measures at equally spaced intervals
     """
     L, _ = sites.shape 
     dmeas = T // nmeasures
@@ -126,19 +129,26 @@ def nb_run_system(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     K = N0 + M0
 
     ## Allocate arrays for storing measures
-    prey_population = np.zeros(nmeasures, dtype=np.int64)
-    pred_population = np.zeros(nmeasures, dtype=np.int64)
-    lattice_configuration = np.zeros((L*L, nmeasures), dtype=np.int64)
+    prey_population = np.zeros(nmeasures+1, dtype=np.int64)
+    pred_population = np.zeros(nmeasures+1, dtype=np.int64)
+    coexistence = 1
+    # lattice_configuration = np.zeros((L*L, nmeasures), dtype=np.int64)
     # predator_positions = np.zeros((N0,T), dtype=np.int64)
+    # Store initial values
+    prey_population[0] = M0 
+    pred_population[0] = N0 
 
     ## Run the stochastic Lotka-Volterra system
-    for t in range(T):
+    for t in range(1,T+1):
         if t % dmeas == 0:
-            # Store the current state of the lattice
+            # Store desired variables
             imeas = t // dmeas
-            lattice_configuration[:,imeas] = lattice.copy()
+            prey_population[imeas] = M 
+            pred_population[imeas] = N
+            # lattice_configuration[:,imeas] = lattice.copy()
         # Stop the simulation if either of the populations has become extinct
-        if M == 0 or N == 0:
+        if M == 0 or N==0:
+            coexistence = 0
             break
         # Set the fixed number of sites to be evolved
         # A single loop that selects (on average) each occupied site once is considered
@@ -247,7 +257,8 @@ def nb_run_system(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                         lattice[new_idx] += 1
                         # Update site index occupied by the predator
                         occupied_sites[_k] = new_idx
-    return lattice_configuration, None
+    
+    return prey_population, pred_population, coexistence
 
 #################################
 # Wrapper for the numba modules #
@@ -263,15 +274,21 @@ class SLLVM(object):
         # Compute the prey (resource) sites on the L x L lattice
         _lattice = self.Lattice.SpectralSynthesis2D(2**args.m, args.H)
         sites = self.Lattice.binary_lattice(_lattice, args.rho)
-        output = nb_run_system(
-            args.T, args.N0, args.M0, sites, 
-            args.mu, args.lambda_, args.sigma, args.alpha,
-            args.nmeasures
-        )
+        # Initialize dictionary
         outdict = {}
-        outdict['sites'] = sites 
-        # outdict['predator_positions'] = output[0]
-        outdict['lattice'] = output[0]
+        outdict['prey_population'] = np.zeros((args.nmeasures+1, args.reps), dtype=np.int64)
+        outdict['pred_population'] = np.zeros((args.nmeasures+1, args.reps), dtype=np.int64)
+        outdict['coexistence'] = np.zeros(args.reps, dtype=np.int64)
+        # Repeat the SLLVM for the lattice and gather results
+        for rep in range(args.reps):
+            output = nb_SLLVM(
+                args.T, args.N0, args.M0, sites, 
+                args.mu, args.lambda_, args.sigma, args.alpha,
+                args.nmeasures
+            )
+            outdict['prey_population'][:,rep] = output[0]
+            outdict['pred_population'][:,rep] = output[1]
+            outdict['coexistence'][rep] = output[2]
         return outdict
 
     
