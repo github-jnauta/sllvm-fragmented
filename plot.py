@@ -248,6 +248,39 @@ class Plotter():
         ax.set_xlabel(r"$t$", fontsize=14)
         ax.set_ylabel(r"population", fontsize=14)
         ax.legend(loc='upper right', fontsize=12, frameon=False)
+    
+    def plot_population_densities(self, args):
+        L = 2**args.m 
+        _rdir = args.rdir+"sllvm/{L:d}x{L:d}/".format(L=L)
+        # Load variable arrays
+        lambda_arr = np.loadtxt(_rdir+"lambda.txt")
+        # Initialize figure
+        fig, ax = plt.subplots(1, 1, figsize=(6,4), tight_layout=True)
+        # Load data
+        suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_sig{:.4f}_a{:.3f}".format(
+            args.T, args.N0, args.M0, args.H, args.rho, args.mu, args.sigma, args.alpha
+        )
+        _N = np.load(_rdir+f"N{suffix}.npy") / L**2
+        _M = np.load(_rdir+f"M{suffix}.npy") / L**2
+        N, M = np.mean(_N, axis=1), np.mean(_M, axis=1)        
+        # Plot        
+        ax_M = ax.twinx()
+        ax.semilogx(
+            lambda_arr, N, color='k', marker='o', mfc='white', markersize=4,
+            label=r"$N(t)$"
+        )
+        ax_M.semilogx(
+            lambda_arr, M, color='r', marker='s', mfc='white', markersize=4,
+            label=r"$M(t)$"
+        )
+        # Limits, labels, etc
+        ax.set_xlim(min(lambda_arr), max(lambda_arr))
+        ax.set_ylim(bottom=0)
+        ax_M.set_ylim(bottom=0)
+        ax.set_xlabel(r"$t$", fontsize=14)
+        ax.set_ylabel(r"population", fontsize=14)
+        ax.legend(fontsize=13, loc='center left', frameon=False)
+        
 
     ###########################
     # Levy walk related plots #
@@ -282,12 +315,17 @@ if __name__ == "__main__":
     args = Argus.args 
     Pjotr = Plotter()
 
+    ## Lattice related plots
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
     # Pjotr.plot_lattice_evolution(args)
     # Pjotr.plot_lattice_initial(args)
     # Pjotr.plot_fragmented_lattice(args)
-    Pjotr.plot_population_dynamics(args)
+    ## Population density related plots
+    # Pjotr.plot_population_dynamics(args)
+    Pjotr.plot_population_densities(args)
+    ## Dynamical system related plots
+    
     if not args.save:
         plt.show()
     else:
