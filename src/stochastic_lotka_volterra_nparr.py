@@ -121,32 +121,32 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     for i in prey_idxs:
         lattice[i] = -1   
     ## Compute occupied site
-    occupied_sites_arr = np.where(lattice!=0)[0]
-    occupied_sites = List()
-    [occupied_sites.append(i) for i in occupied_sites_arr]
+    occupied_sites = np.where(lattice!=0)[0]
+    # occupied_sites = List()
+    # [occupied_sites.append(i) for i in occupied_sites_arr]
     ## Allocate
-    predator_ids = List()
-    didx = List() 
-    flight_length = List() 
-    curr_length = List() 
-    # [predator_ids.append(_id) for _id in range(N0)]
-    # [didx.append(i) for i in range(N0)]
-    # [flight_length.append(i) for i in range(N0)]
-    # [curr_length.append(np.int64(0)) for _ in range(N0)]
-    for i in range(N0):
-        predator_ids.append(i)
-        didx.append(0)
-        flight_length.append(0)
-        curr_length.append(0)
-    # flight_length = np.zeros(N0, dtype=np.int64)    # Sampled flight length of each predator
-    # curr_length = np.zeros(N0, dtype=np.int64)      # Current length of each predator
-    # didx = np.zeros(N0, dtype=np.int64)             # 1D Δi for each predator
-    # predator_ids = np.arange(N0, dtype=np.int64)    # ID of each predator
+    # predator_ids = List()
+    # didx = List() 
+    # flight_length = List() 
+    # curr_length = List() 
+    # # [predator_ids.append(_id) for _id in range(N0)]
+    # # [didx.append(i) for i in range(N0)]
+    # # [flight_length.append(i) for i in range(N0)]
+    # # [curr_length.append(np.int64(0)) for _ in range(N0)]
+    # for i in range(N0):
+    #     predator_ids.append(i)
+    #     didx.append(0)
+    #     flight_length.append(0)
+    #     curr_length.append(0)
+    flight_length = np.zeros(N0, dtype=np.int64)    # Sampled flight length of each predator
+    curr_length = np.zeros(N0, dtype=np.int64)      # Current length of each predator
+    didx = np.zeros(N0, dtype=np.int64)             # 1D Δi for each predator
+    predator_ids = np.arange(N0, dtype=np.int64)    # ID of each predator
     current_max_id = N0 - 1
     # Get predator positions seperately as is convenient for emulating Levy walks
-    predator_pos = List()
-    [predator_pos.append(i) for i in predator_idxs]
-    # predator_pos = np.asarray([i for i in predator_idxs], dtype=np.int64)
+    # predator_pos = List()
+    # [predator_pos.append(i) for i in predator_idxs]
+    predator_pos = np.asarray([i for i in predator_idxs], dtype=np.int64)
     # Initialize number of predators and prey
     N = N0 
     M = M0 
@@ -202,7 +202,8 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                     if np.random.random() < sigma:
                         lattice[neighbor] = -1
                         M += 1
-                        occupied_sites.append(neighbor)
+                        occupied_sites = np.append(occupied_sites, neighbor)
+                        # occupied_sites.append(neighbor)
                         K += 1
             ## If the site contains a predator, check in order
             # (i)   die with mortality rate μ
@@ -220,17 +221,19 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                 if np.random.random() < mu:
                     lattice[idx] -= 1
                     # Remove the predator
-                    predator_ids.pop(_pred_id)
-                    predator_pos.pop(_pred_id)
-                    flight_length.pop(_pred_id)
-                    curr_length.pop(_pred_id)
+                    # predator_ids.pop(_pred_id)
+                    # predator_pos.pop(_pred_id)
+                    # flight_length.pop(_pred_id)
+                    # curr_length.pop(_pred_id)
                     # predator_ids = np.delete(predator_ids, _pred_id)
-                    # predator_pos = np.delete(predator_pos, _pred_id)
-                    # flight_length = np.delete(flight_length, _pred_id)
-                    # curr_length = np.delete(curr_length, _pred_id)
+                    predator_ids[_pred_id] = np.inf 
+                    predator_ids = predator_ids[predator_ids<np.inf]
+                    predator_pos = np.delete(predator_pos, _pred_id)
+                    flight_length = np.delete(flight_length, _pred_id)
+                    curr_length = np.delete(curr_length, _pred_id)
                     N = max(0, N-1)
-                    # occupied_sites = np.delete(occupied_sites, _k)
-                    occupied_sites.pop(_pred_id)
+                    occupied_sites = np.delete(occupied_sites, _k)
+                    # occupied_sites.pop(_pred_id)
                     K = max(0, K-1)
                 else:
                     ## (ii) start a new flight
@@ -268,27 +271,27 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                         for __k, __idx in enumerate(occupied_sites):
                             if __idx == new_idx:
                                 break
-                        # occupied_sites = np.delete(occupied_sites, __k)
-                        occupied_sites.pop(__k)
+                        occupied_sites = np.delete(occupied_sites, __k)
+                        # occupied_sites.pop(__k)
                         K = max(0, K-1)
                         ## Reproduce with rate λ
                         if np.random.random() < lambda_:
                             lattice[new_idx] += 1
-                            predator_ids.append(current_max_id)
-                            predator_pos.append(new_idx)
-                            flight_length.append(0)
-                            curr_length.append(0)
-                            # predator_ids = np.append(predator_ids, current_max_id)
-                            # predator_pos = np.append(predator_pos, new_idx)
-                            # flight_length = np.append(flight_length, 0)
-                            # curr_length = np.append(curr_length, 0)
-                            # didx = np.append(didx, np.int64(0))
-                            didx.append(0)
+                            # predator_ids.append(current_max_id)
+                            # predator_pos.append(new_idx)
+                            # flight_length.append(0)
+                            # curr_length.append(0)
+                            # didx.append(0)
+                            predator_ids = np.append(predator_ids, current_max_id)
+                            predator_pos = np.append(predator_pos, new_idx)
+                            flight_length = np.append(flight_length, 0)
+                            curr_length = np.append(curr_length, 0)
+                            didx = np.append(didx, np.int64(0))
                             current_max_id += 1
                             N += 1
                             # Add occupied site
-                            # occupied_sites = np.append(occupied_sites, new_idx)
-                            occupied_sites.append(new_idx)
+                            occupied_sites = np.append(occupied_sites, new_idx)
+                            # occupied_sites.append(new_idx)
                             K += 1
                     else:
                         # NOTE: Update lattice as mentioned above

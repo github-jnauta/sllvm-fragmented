@@ -28,12 +28,12 @@ class Args():
         )
         ## Resource variables
         parser.add_argument(
-            '--sigma', dest='sigma', type=float, default=0.01,
+            '--sigma', dest='sigma', type=float, default=0.1,
             help='specify the reproduction rate of the prey (resources)'
         )
         ## Forager variables
         parser.add_argument(
-            '--T', dest='T', type=int, default=2000, help='number of Monte-Carlo steps'
+            '--T', dest='T', type=int, default=100, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
             '--alpha', dest='alpha', type=float, default=3., 
@@ -48,7 +48,7 @@ class Args():
             help='specify predator reproduction rate'
         )
         parser.add_argument(
-            '--N0', dest='N0', type=int, default=256,
+            '--N0', dest='N0', type=int, default=-1,
             help='initial number of predators (foragers)'
         )
         ## Random number variables
@@ -61,7 +61,7 @@ class Args():
             help='specify the number of repetitions per resource landscape'
         )
         parser.add_argument(
-            '--k', dest='nmeasures', type=int, default=50,
+            '--k', dest='nmeasures', type=int, default=100,
             help='specify the number of times population size needs to be measured'
         )
         ## Boolean variables
