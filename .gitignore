@@ -6,6 +6,8 @@
 /data/*/
 /supplementary/data/*
 /supplementary/data/*/
+/results/*
+/results/*/
 # Do not include non-binary files, i.e. images
 /figures/*
 /figures/*/

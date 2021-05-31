@@ -33,10 +33,10 @@ class Args():
         )
         ## Forager variables
         parser.add_argument(
-            '--T', dest='T', type=int, default=1000, help='number of Monte-Carlo steps'
+            '--T', dest='T', type=int, default=2000, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
-            '--alpha', dest='alpha', type=float, default=2., 
+            '--alpha', dest='alpha', type=float, default=3., 
             help='specify Levy parameter of the forager(s)'
         )
         parser.add_argument(
@@ -57,7 +57,7 @@ class Args():
         )
         ## Numerical variables
         parser.add_argument(
-            '--reps', dest='reps', type=int, default=30,
+            '--reps', dest='reps', type=int, default=10,
             help='specify the number of repetitions per resource landscape'
         )
         parser.add_argument(

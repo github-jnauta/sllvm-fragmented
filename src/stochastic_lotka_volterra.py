@@ -150,10 +150,15 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             prey_population[imeas] = M 
             pred_population[imeas] = N
             # lattice_configuration[:,imeas] = lattice.copy()
-        # Stop the simulation if either of the populations has become extinct
-        if M == 0 or N==0:
+        # Stop the simulation if prey goes extinct, as predators will also go extinct
+        if M == 0:
             coexistence = 0
             break
+        # Stop the simulation if predators go extinct, as prey will fully occupy all sites
+        if N == 0:
+            coexistence = 0
+            prey_population[imeas:] = L**2 
+            break 
         # Set the fixed number of sites to be evolved
         # A single loop that selects (on average) each occupied site once is considered
         # a single Monte Carlo time step

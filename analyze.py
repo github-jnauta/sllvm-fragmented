@@ -18,7 +18,7 @@ class Analyzer():
             os.makedirs(_rdir)
         # Load variable arrays
         lambda_arr = np.loadtxt(_dir+"lambda.txt")
-        seeds = np.loadtxt(_dir+"seeds.txt")
+        seeds = np.loadtxt(_dir+"seeds.txt", dtype=int)
         # Allocate
         N = np.zeros((len(lambda_arr), args.reps*len(seeds)))
         M = np.zeros((len(lambda_arr), args.reps*len(seeds)))
@@ -35,10 +35,10 @@ class Analyzer():
         # Save
         save_suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_sig{:.4f}_a{:.3f}".format(
             args.T, args.N0, args.M0, args.H, args.rho, 
-            args.mu, lambda_, args.sigma, args.alpha, seed
+            args.mu, args.sigma, args.alpha
         )
-        np.save(_rdir+"N{suffix:s}".format(suffix=suffix))
-        np.save(_rdir+"M{suffix:s}".format(suffix=suffix))
+        np.save(_rdir+"N{suffix:s}".format(suffix=save_suffix), N)
+        np.save(_rdir+"M{suffix:s}".format(suffix=save_suffix), M)
         # Print closing statements
         printstr = "{L}x{L} lattice, H={H:.3f}, \u03C1={rho:.3f}, T={T:d}, \u03B1={alpha:.3f}, \u03BC={mu:.4f}, \u03C3={sigma:.4f}".format(
             L=2**args.m, H=args.H, rho=args.rho, T=args.T,
