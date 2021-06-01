@@ -63,12 +63,13 @@ def nb_get_1D_neighbors(idx, L):
     neighbors_1D = np.array([n[0]*L + n[1] for n in neighbors], dtype=np.int64)
     return neighbors_1D
 
-@numba.jit(nopython=True, cache=True, debug=True)
+@numba.jit(nopython=True, cache=True)
 def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     """ Runs the stochastic lattice Lotka-Volterra model
         While the lattice is a 2D (square) lattice, for speed we first convert everyting
         to a 1D lattice, where neighbors and periodic boundary conditions properly need
-        to be taken into account.
+        to be taken into account. The 1-dimensional index of the lattice is conveniently
+        also the position on the lattice, as sites are restricted to the lattice. 
 
         Parameters
         ----------
@@ -120,37 +121,37 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     prey_idxs = np.random.choice(prey_sites, size=M0, replace=False)
     for i in prey_idxs:
         lattice[i] = -1   
-    ## Compute occupied site
-    occupied_sites = np.where(lattice!=0)[0]
-    # occupied_sites = List()
-    # [occupied_sites.append(i) for i in occupied_sites_arr]
+    ## Compute occupied sites and its mask
+    occupied_sites_arr = np.where(lattice!=0)[0]
+    occupied_sites = List()
+    occupied_mask = List()
+    for i in range(M0+N0):
+        occupied_sites.append(occupied_sites_arr[i])
+        occupied_mask.append(True)
+
     ## Allocate
-    # predator_ids = List()
-    # didx = List() 
-    # flight_length = List() 
-    # curr_length = List() 
-    # # [predator_ids.append(_id) for _id in range(N0)]
-    # # [didx.append(i) for i in range(N0)]
-    # # [flight_length.append(i) for i in range(N0)]
-    # # [curr_length.append(np.int64(0)) for _ in range(N0)]
-    # for i in range(N0):
-    #     predator_ids.append(i)
-    #     didx.append(0)
-    #     flight_length.append(0)
-    #     curr_length.append(0)
-    flight_length = np.zeros(N0, dtype=np.int64)    # Sampled flight length of each predator
-    curr_length = np.zeros(N0, dtype=np.int64)      # Current length of each predator
-    didx = np.zeros(N0, dtype=np.int64)             # 1D Δi for each predator
-    predator_ids = np.arange(N0, dtype=np.int64)    # ID of each predator
-    current_max_id = N0 - 1
-    # Get predator positions seperately as is convenient for emulating Levy walks
-    # predator_pos = List()
-    # [predator_pos.append(i) for i in predator_idxs]
-    predator_pos = np.asarray([i for i in predator_idxs], dtype=np.int64)
+    predator_ids = List()
+    didx = List()
+    flight_length = List()
+    curr_length = List()
+    predator_pos = List()
+    alive_mask = List()
+    for i in range(N0):
+        predator_ids.append(i)                  # ID of each predator
+        didx.append(0)                          # 1D direction for current Levy bout
+        flight_length.append(0)                 # Sampled flight length of each predator
+        curr_length.append(0)                   # Current traversed length of the fligh
+        predator_pos.append(predator_idxs[i])   # Current position (index) of predator
+        alive_mask.append(True)                 # Boolean mask indicating predator is alive
+    current_max_id = N0 - 1                     # Specify current maximum ID
+    # Get predator positions seperately as is necessary for simulating Levy walks
+    # [predator_pos.append(i) for i in predator_idxs]    
     # Initialize number of predators and prey
     N = N0 
     M = M0 
     K = N0 + M0
+    # Specify temporary variables
+    temp_N = N
 
     ## Allocate arrays for storing measures
     prey_population = np.zeros(nmeasures+1, dtype=np.int64)
@@ -165,35 +166,55 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
 
     ## Run the stochastic Lotka-Volterra system
     for t in range(1,T+1):
+        ## Store desired variables every dmeas timesteps
         if t % dmeas == 0:
-            # Store desired variables
             imeas = t // dmeas
             prey_population[imeas] = M 
             pred_population[imeas] = N
             # lattice_configuration[:,imeas] = lattice.copy()
-        # Stop the simulation if prey goes extinct, as predators will also go extinct
+        
+        ## Stop the simulation if:
+        # prey goes extinct, as predators will also go extinct
         if M == 0:
             coexistence = 0
             break
-        # Stop the simulation if predators go extinct, as prey will fully occupy all sites
+        # predators go extinct, as prey will fully occupy all sites
         if N == 0:
             coexistence = 0
             prey_population[imeas:] = L**2 
-            break 
-        # Set the fixed number of sites to be evolved
-        # A single loop that selects (on average) each occupied site once is considered
-        # a single Monte Carlo time step
-        steps = K
+            break
+
+        ## Remove all predators that are not alive anymore
+        # (NOTE: Only do this if the number of predators has changed)
+        if temp_N != N:
+            # Create the generator
+            _gen = range(len(alive_mask))
+            # Change predator related lists
+            predator_ids = List([predator_ids[i] for i in _gen if alive_mask[i]])
+            didx = List([didx[i] for i in _gen if alive_mask[i]])
+            flight_length = List([flight_length[i] for i in _gen if alive_mask[i]])
+            curr_length = List([curr_length[i] for i in _gen if alive_mask[i]])
+            predator_pos = List([predator_pos[i] for i in _gen if alive_mask[i]])
+            alive_mask = List([alive_mask[i] for i in _gen if alive_mask[i]])
+            temp_N = N 
+            # Change occupance related list
+            _ogen = range(len(occupied_mask))
+            occupied_sites = List([occupied_sites[i] for i in _ogen if occupied_mask[i]])
+            occupied_mask = List([occupied_mask[i] for i in _ogen if occupied_mask[i]])
+
+        # Randomly select K sites in a loop, as a single loop that selects (on average)
+        # each occupied site once is considered a single Monte Carlo time step
+        steps = K 
         for tau in range(steps):
             # Select a random occupied site
             _k = np.random.randint(0, K)
             idx = occupied_sites[_k]
             neighbors = nb_get_1D_neighbors(idx, L)
             ## If the site contains prey, reproduce with probability (rate) σ
-            #NOTE: Prey only reproduces if it has an empty neighboring site
+            # (NOTE: Prey only reproduces if it has an empty neighboring site)
             if lattice[idx] == -1:
                 # Check if neighboring sites are empty
-                eligible_neighbors = [n for n in neighbors if not lattice[n]]
+                eligible_neighbors = List([n for n in neighbors if not lattice[n]])
                 _nn = len(eligible_neighbors)
                 if _nn > 0:
                     # Randomly sample one of the eligible neighboring sites
@@ -201,9 +222,9 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                     # Place prey there with probability σ
                     if np.random.random() < sigma:
                         lattice[neighbor] = -1
+                        occupied_sites.append(neighbor)
+                        occupied_mask.append(True)
                         M += 1
-                        occupied_sites = np.append(occupied_sites, neighbor)
-                        # occupied_sites.append(neighbor)
                         K += 1
             ## If the site contains a predator, check in order
             # (i)   die with mortality rate μ
@@ -213,28 +234,22 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             elif lattice[idx] > 0:
                 ## Get predator ID. If two on the same location, select one
                 for _pred_id, _pred_idx in enumerate(predator_pos):
-                    if _pred_idx == idx:
+                    if _pred_idx == idx and alive_mask[_pred_id]:
                         break
+                else:
+                    continue 
                 ## (i) Die with mortality rate μ
                 #NOTE: We can substract 1, such that if the current state is the reproductive
                 #      state with value 2, there is 1 predator still remaining
                 if np.random.random() < mu:
                     lattice[idx] -= 1
-                    # Remove the predator
-                    # predator_ids.pop(_pred_id)
-                    # predator_pos.pop(_pred_id)
-                    # flight_length.pop(_pred_id)
-                    # curr_length.pop(_pred_id)
-                    # predator_ids = np.delete(predator_ids, _pred_id)
-                    predator_ids[_pred_id] = np.inf 
-                    predator_ids = predator_ids[predator_ids<np.inf]
-                    predator_pos = np.delete(predator_pos, _pred_id)
-                    flight_length = np.delete(flight_length, _pred_id)
-                    curr_length = np.delete(curr_length, _pred_id)
-                    N = max(0, N-1)
-                    occupied_sites = np.delete(occupied_sites, _k)
-                    # occupied_sites.pop(_pred_id)
-                    K = max(0, K-1)
+                    # Change the alive_mask of the predator to False
+                    alive_mask[_pred_id] = False 
+                    N -= 1
+                    # Change occupied mask of site to false if no predator remains
+                    if lattice[idx] == 0:
+                        occupied_mask[_k] = False 
+                        K -= 1
                 else:
                     ## (ii) start a new flight
                     if curr_length[_pred_id] == 0:
@@ -244,15 +259,15 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                     ## (iii) continue the current (or just started) flight
                     # Update position
                     # NOTE: The lattice is updated below (iv)
-                    lattice[idx] = lattice[idx] - 1
+                    lattice[idx] -= 1
                     # Determine new 1D index using periodic boundary conditions
                     _i = ( idx // L + delta_idx_2D[didx[_pred_id]][0] ) % L
                     _j = ( idx % L + delta_idx_2D[didx[_pred_id]][1] ) % L 
                     new_idx = _i * L + _j
                     # Ensure single occupancy
                     if lattice[new_idx] > 0:
-                        new_idx = idx                   # Stay put
                         curr_length[_pred_id] = 0       # Truncate current flight
+                        continue
                     else:                        
                         curr_length[_pred_id] += 1      # Increment current path length
                     # Update predator position
@@ -263,36 +278,25 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
 
                     if lattice[new_idx] == -1:
                         ## (iv) consume prey and reproduce
+                        # TODO: MAKE SURE THIS IS CORRECT
                         lattice[new_idx] = 1            # Site becomes occupied by predator
                         curr_length[_pred_id] = 0       # Truncate current flight
                         occupied_sites[_k] = new_idx    # Update index occupied by predator
-                        ## Consume prey and remove occupied site
-                        M = max(0, M-1)
-                        for __k, __idx in enumerate(occupied_sites):
-                            if __idx == new_idx:
-                                break
-                        occupied_sites = np.delete(occupied_sites, __k)
+                        M -= 1
+                        # occupied_sites = np.delete(occupied_sites, __k)
                         # occupied_sites.pop(__k)
-                        K = max(0, K-1)
+                        # K = max(0, K-1)
                         ## Reproduce with rate λ
                         if np.random.random() < lambda_:
                             lattice[new_idx] += 1
-                            # predator_ids.append(current_max_id)
-                            # predator_pos.append(new_idx)
-                            # flight_length.append(0)
-                            # curr_length.append(0)
-                            # didx.append(0)
-                            predator_ids = np.append(predator_ids, current_max_id)
-                            predator_pos = np.append(predator_pos, new_idx)
-                            flight_length = np.append(flight_length, 0)
-                            curr_length = np.append(curr_length, 0)
-                            didx = np.append(didx, np.int64(0))
+                            predator_ids.append(current_max_id)
+                            predator_pos.append(new_idx)
+                            flight_length.append(0)
+                            curr_length.append(0)
+                            didx.append(0)
+                            alive_mask.append(True)
                             current_max_id += 1
                             N += 1
-                            # Add occupied site
-                            occupied_sites = np.append(occupied_sites, new_idx)
-                            # occupied_sites.append(new_idx)
-                            K += 1
                     else:
                         # NOTE: Update lattice as mentioned above
                         # No prey, so predator just moves there

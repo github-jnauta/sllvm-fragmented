@@ -4,13 +4,13 @@ import os, time
 import numpy as np 
 # Import modules
 import src.args 
-import src.stochastic_lotka_volterra_nparr
+import src.stochastic_lotka_volterra
 
 if __name__ == "__main__":
     # Instantiate objects
     Argus = src.args.Args() 
     args = Argus.args 
-    System = src.stochastic_lotka_volterra_nparr.SLLVM()
+    System = src.stochastic_lotka_volterra.SLLVM()
     # Start clock for computation time estimates
     starttime = time.time()
     # Run
