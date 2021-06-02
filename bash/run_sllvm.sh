@@ -58,7 +58,7 @@ fi
 #  Additionally store these variables in files for later use (e.g. analysis, plotting)
 seeds=$(seq 1 1 $NSEEDS)
 # lambda=$(seq 0 0.05 1)
-python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,0,30), fmt="%.4e")'
+python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,0,25), fmt="%.4e")'
 mkdir -p $DATADIR
 echo "${seeds[@]}" > $DATADIR/seeds.txt
 # echo "${lambda[@]}" > $DATADIR/lambda.txt
