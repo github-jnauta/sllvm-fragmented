@@ -92,6 +92,10 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     """
     L, _ = sites.shape 
     dmeas = T // nmeasures
+    # Adapt some variables as they should take on a specific value if -1 is provided
+    mu = 1 / L if mu == -1 else mu          # Death rate 
+    N0 = L**2 // 10 if N0 == -1 else N0     # Initial number of predators
+
     ## Initialize constants
     delta_idx = np.array([1, -1, L, -L], dtype=np.int64)
     delta_idx_2D = np.array([[0,1], [0,-1], [1,0], [-1,0]], dtype=np.int64)
@@ -104,8 +108,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     #   -1  : prey (resource)
     #   >=1 : predator (forager) [multiple occupancy is allowed (for now)]
     lattice = np.zeros(L*L, dtype=np.int64)
-    # Initialize predators on sites not eligible for prey
-    N0 = L**2 // 10 if N0 == -1 else N0 
+    # Initialize predators on sites not eligible for prey    
     predator_sites = np.where(sites==0)[0]
     predator_idxs = np.random.choice(predator_sites, size=N0, replace=False)
     for i in predator_idxs:
@@ -133,8 +136,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     N = N0 
     M = M0 
     K = N0 + M0
-    # Specify temporary variables
-    temp_N = N
+    # Specify temporary loop variable that allows for dynamic value of K
     temp_K = K 
 
     ## Allocate arrays for storing measures
@@ -168,33 +170,28 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             prey_population[imeas:] = L**2 
             break 
 
-        ## Update using the masked arrays        
-        if temp_N != N:
-            # Predator related arrays
-            predator_ids = predator_ids[alive_mask]
-            predator_pos = predator_pos[alive_mask]
-            flight_length = flight_length[alive_mask]
-            curr_length = curr_length[alive_mask]
-            didx = didx[alive_mask]
-            alive_mask = alive_mask[alive_mask]
-            # Set new temp value for N
-            temp_N = N 
-        if temp_K != K:
-            # Occupied sites
-            occupied_sites = occupied_sites[occupied_mask]
-            occupied_mask = occupied_mask[occupied_mask]
-            # Set new temp value for K
-            temp_K = K
+        ## Update using the masked arrays
+        # Predator related arrays
+        predator_ids = predator_ids[alive_mask]
+        predator_pos = predator_pos[alive_mask]
+        flight_length = flight_length[alive_mask]
+        curr_length = curr_length[alive_mask]
+        didx = didx[alive_mask]
+        alive_mask = alive_mask[alive_mask]
+        # Occupied sites
+        occupied_sites = occupied_sites[occupied_mask]
+        occupied_mask = occupied_mask[occupied_mask]
+        # Set new temp value for K
+        temp_K = K
         
         # Set the fixed number of sites to be evolved
         # A single loop that selects (on average) each occupied site once is considered
         # a single Monte Carlo time step
-        print(N, M, K, len(occupied_sites), L**2, np.sum(lattice!=1))        
         for tau in range(temp_K):
             # Select a random occupied site
             site_is_occupied = False 
             while not site_is_occupied:
-                _k = np.random.randint(0, temp_K)
+                _k = np.random.randint(0, K)
                 site_is_occupied = occupied_mask[_k]
             idx = occupied_sites[_k]
             neighbors = nb_get_1D_neighbors(idx, L)
@@ -202,7 +199,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             #NOTE: Prey only reproduces if it has an empty neighboring site
             if lattice[idx] == -1:
                 # Check if neighboring sites are empty
-                eligible_neighbors = [n for n in neighbors if not lattice[n]]
+                eligible_neighbors = [n for n in neighbors if lattice[n]==0]
                 _nn = len(eligible_neighbors)
                 if _nn > 0:
                     # Randomly sample one of the eligible neighboring sites
@@ -232,7 +229,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                     # Change the alive_mask of the predator to False
                     alive_mask[_pred_id] = False 
                     N -= 1
-                    # If site is now empty, set mask value to False
+                    # If previous site is now empty, set mask value to False
                     if lattice[idx] == 0:
                         occupied_mask[_k] = False 
                         K -= 1
@@ -245,16 +242,21 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                     ## (iii) continue the current (or just started) flight
                     # Determine new 1D index using periodic boundary conditions
                     _i = ( idx // L + delta_idx_2D[didx[_pred_id]][0] ) % L
-                    _j = ( idx % L + delta_idx_2D[didx[_pred_id]][1] ) % L 
+                    _j = ( idx %  L + delta_idx_2D[didx[_pred_id]][1] ) % L 
                     new_idx = _i * L + _j
                     # Ensure single occupancy by doing nothing when the site is
                     # already occupied by a predator or predators
                     if lattice[new_idx] > 0:
                         curr_length[_pred_id] = 0       # Truncate current flight
                     else:
-                        # Update lattice
-                        # NOTE: The lattice is further updated below (iv)
+                        # Update the lattice by decrementing previously occupied site
                         lattice[idx] -= 1
+                        # Ensure that, if the site was previously in the reproduction 
+                        # state, that the increase in occupied sites is handled
+                        if lattice[idx] == 1:
+                            occupied_sites = np.append(occupied_sites, idx)
+                            occupied_mask = np.append(occupied_mask, True)
+                            K += 1
                         curr_length[_pred_id] += 1          # Increment current path length
                         predator_pos[_pred_id] = new_idx    # Update predator position
                         # End current flight if current path length exceeds sampled length
@@ -267,8 +269,12 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                             curr_length[_pred_id] = 0   # Truncate current flight
                             M -= 1
                             # Ensure that site previously occupied by the predator has its
-                            # mask value set to False
-                            occupied_mask[_k] = False 
+                            # mask value set to False, at it replaces the prey
+                            # for __k, __idx in enumerate(occupied_sites):
+                            #     if __idx == new_idx:
+                            #         break
+                            occupied_mask[_k] = False
+                            # occupied_mask[_k] = False 
                             K -= 1
                             ## Reproduce with rate λ
                             if np.random.random() < lambda_:
@@ -284,16 +290,9 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                                 current_max_id += 1
                                 N += 1
                         else:
-                            # NOTE: Update lattice as mentioned above
-                            # No prey, so predator just moves there
+                            ## Displace
                             lattice[new_idx] += 1
                             occupied_sites[_k] = new_idx
-                            # Ensure that, if the site was previously in the reproduction 
-                            # state, that the increase in occupied sites is handled
-                            if lattice[idx] == 1:
-                                occupied_sites = np.append(occupied_sites, idx)
-                                occupied_mask = np.append(occupied_mask, True)
-                                K += 1
     return prey_population, pred_population, coexistence, lattice_configuration
 
 #################################
