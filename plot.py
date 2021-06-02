@@ -120,10 +120,10 @@ class Plotter():
         _dir = args.ddir+"sllvm/{L:d}x{L:d}/".format(L=2**args.m)
         _rdir = "figures/"
         # Set variables
-        _alpha = [1, 2, 3]
+        _alpha = [args.alpha]
         def get_image(alpha):
             # Load lattice
-            suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.3f}_sig{:.3f}_a{:.3f}_seed{:d}".format(
+            suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}_seed{:d}".format(
                 args.T, args.N0, args.M0, args.H, args.rho, args.mu, args.lambda_, args.sigma, alpha, args.seed
             )
             lattice = np.load(_dir+"lattice{suffix:s}.npy".format(suffix=suffix))
@@ -153,7 +153,8 @@ class Plotter():
                         im[i,j,t,:] = color_map[lattice[i,j,t]]
             return im 
         # Initialize figure
-        fig, axes = plt.subplots(1, 3, figsize=(3*len(_alpha),3), tight_layout=True)
+        _figlen = max(len(_alpha), 2)
+        fig, axes = plt.subplots(1, _figlen, figsize=(3*_figlen,3), tight_layout=True)
         # Plot
         images = [get_image(alpha) for alpha in _alpha]
         ims = []
@@ -167,22 +168,23 @@ class Plotter():
         
         def update(t):
             for i, alpha in enumerate(_alpha):
-                ims[i].set_array(images[i][:,:,t,:])
+                lattice_t = images[i][:,:,t,:]
+                ims[i].set_array(lattice_t)
             return ims 
 
         anim = animation.FuncAnimation(fig, update, interval=25, frames=args.nmeasures+1)
         if not args.save:
             plt.show()
         else:
-            suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.3f}_lambda{:.3f}_sig{:.3f}".format(
+            suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.4f}_sig{:.4f}".format(
                 args.T, args.N0, args.M0, args.H, args.rho, args.mu, args.lambda_, args.sigma
             )
             anim.save(
                 _rdir+"gifs/lattice_animation{suffix:s}.gif".format(suffix=suffix),
                 writer='imagemagick', fps=10
             )
-
-
+# lattice_T500_N128_M-1_H0.900_rho0.050_mu0.0000_lambda0.0000_sig0.1000_a3.000_seed42.npy
+# lattice_T500_N128_M-1_H0.900_rho0.050_mu0.0000_lambda0.0000_sig0.1000_a3.000_seed42.npy
     ## Static plots
     def plot_lattice(self, args):
         # Specify directory
@@ -248,6 +250,31 @@ class Plotter():
         ax.set_xlabel(r"$t$", fontsize=14)
         ax.set_ylabel(r"population", fontsize=14)
         ax.legend(loc='upper right', fontsize=12, frameon=False)
+
+    def plot_population_phase_space(self, args):
+        L = 2**args.m 
+        _dir = args.ddir+"sllvm/{L:d}x{L:d}/".format(L=L)
+        # Specify variables
+        # lambda_arr = [0.05]
+        # Initialize figure
+        fig, ax = plt.subplots(1, 1, figsize=(5,5), tight_layout=True)
+        # Load data
+        lambda_arr = [0.005, 0.05, 0.5]
+        for i, λ in enumerate(lambda_arr):
+            suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}_seed{:d}".format(
+                args.T, args.N0, args.M0, args.H, args.rho, args.mu, λ, args.sigma, args.alpha, args.seed
+            )
+            _N = np.load(_dir+f"pred_population{suffix}.npy") / L**2
+            _M = np.load(_dir+f"prey_population{suffix}.npy") / L**2
+            N, M = np.mean(_N, axis=1), np.mean(_M, axis=1)
+            # Plot
+            ax.plot(N, M, color=colors[i], label=r"$\lambda=%.4f$"%(λ))
+        # Limits, labels, etc
+        ax.set_xlim(left=0)
+        ax.set_ylim(bottom=0)
+        ax.set_xlabel(r"$N$")
+        ax.set_ylabel(r"$M$")
+        ax.legend(loc='upper center')
     
     def plot_population_densities(self, args):
         L = 2**args.m 
@@ -318,12 +345,15 @@ if __name__ == "__main__":
     ## Lattice related plots
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
-    # Pjotr.plot_lattice_evolution(args)
+    Pjotr.plot_lattice_evolution(args)
     # Pjotr.plot_lattice_initial(args)
     # Pjotr.plot_fragmented_lattice(args)
+
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
-    Pjotr.plot_population_densities(args)
+    # Pjotr.plot_population_densities(args)
+    # Pjotr.plot_population_phase_space(args)
+
     ## Dynamical system related plots
     
     if not args.save:

@@ -90,8 +90,6 @@ class Args():
         # Parse arguments
         self.args = parser.parse_args()
 
-        ## Check some assertations and/or adapt accordingly
-        # Set mortality rate
-        self.args.mu = 1/2**self.args.m if self.args.mu == -1 else self.args.mu
+        ## Check some assertations and/or adapt accordingly        
         # Check if number of measurements is allowed
         assert((self.args.T/self.args.nmeasures).is_integer()), "Invalid number of measurements"

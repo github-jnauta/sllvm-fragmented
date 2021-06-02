@@ -4,7 +4,7 @@ import os, time
 import numpy as np 
 # Import modules
 import src.args 
-import src.stochastic_lotka_volterra 
+import src.stochastic_lotka_volterra
 
 if __name__ == "__main__":
     # Instantiate objects
