@@ -143,12 +143,12 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     prey_population = np.zeros(nmeasures+1, dtype=np.int64)
     pred_population = np.zeros(nmeasures+1, dtype=np.int64)
     coexistence = 1
-    lattice_configuration = np.zeros((L*L, nmeasures+1), dtype=np.int64)
+    # lattice_configuration = np.zeros((L*L, nmeasures+1), dtype=np.int64)
     # predator_positions = np.zeros((N0,T), dtype=np.int64)
     # Store initial values
     prey_population[0] = M0 
     pred_population[0] = N0 
-    lattice_configuration[:,0] = lattice.copy()
+    # lattice_configuration[:,0] = lattice.copy()
 
     ## Run the stochastic Lotka-Volterra system
     for t in range(1,T+1):
@@ -157,7 +157,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             imeas = t // dmeas
             prey_population[imeas] = M 
             pred_population[imeas] = N
-            lattice_configuration[:,imeas] = lattice.copy()
+            # lattice_configuration[:,imeas] = lattice.copy()
 
         ## Stop the simulation if:
         # prey goes extinct, as predators will also go extinct
@@ -270,11 +270,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                             M -= 1
                             # Ensure that site previously occupied by the predator has its
                             # mask value set to False, at it replaces the prey
-                            # for __k, __idx in enumerate(occupied_sites):
-                            #     if __idx == new_idx:
-                            #         break
                             occupied_mask[_k] = False
-                            # occupied_mask[_k] = False 
                             K -= 1
                             ## Reproduce with rate λ
                             if np.random.random() < lambda_:
@@ -293,7 +289,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                             ## Displace
                             lattice[new_idx] += 1
                             occupied_sites[_k] = new_idx
-    return prey_population, pred_population, coexistence, lattice_configuration
+    return prey_population, pred_population, coexistence
 
 #################################
 # Wrapper for the numba modules #
@@ -324,7 +320,7 @@ class SLLVM(object):
             outdict['prey_population'][:,rep] = output[0]
             outdict['pred_population'][:,rep] = output[1]
             outdict['coexistence'][rep] = output[2]
-        outdict['lattice'] = output[3]
+        # outdict['lattice'] = output[3]
         return outdict
 
     

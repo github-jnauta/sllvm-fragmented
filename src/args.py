@@ -33,7 +33,7 @@ class Args():
         )
         ## Forager variables
         parser.add_argument(
-            '--T', dest='T', type=int, default=100, help='number of Monte-Carlo steps'
+            '--T', dest='T', type=int, default=2500, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
             '--alpha', dest='alpha', type=float, default=3., 
@@ -61,7 +61,7 @@ class Args():
             help='specify the number of repetitions per resource landscape'
         )
         parser.add_argument(
-            '--k', dest='nmeasures', type=int, default=100,
+            '--k', dest='nmeasures', type=int, default=250,
             help='specify the number of times population size needs to be measured'
         )
         ## Boolean variables
