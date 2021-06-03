@@ -158,6 +158,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
 
     ## Run the stochastic Lotka-Volterra system
     for t in range(1,T+1):
+        print(t, M, N)
         ## Store desired variables every dmeas timesteps
         if t % dmeas == 0:
             imeas = t // dmeas
@@ -194,10 +195,13 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
         # A single loop that selects (on average) each occupied site once is considered
         # a single Monte Carlo time step
         for tau in range(temp_K):
+            # Break out of the MC step if no site is occupied
+            if K == 0:
+                break 
             # Select a random occupied site
             site_is_occupied = False 
-            while not site_is_occupied:
-                _k = np.random.randint(0, K)
+            while not site_is_occupied:                
+                _k = np.random.randint(0, temp_K)
                 site_is_occupied = occupied_mask[_k]
             idx = occupied_sites[_k]
             neighbors = nb_get_1D_neighbors(idx, L)
@@ -347,9 +351,11 @@ class SLLVM(object):
                 args.mu, args.lambda_, args.sigma, args.alpha,
                 args.nmeasures
             )
+            print(rep)
             outdict['prey_population'][:,rep] = output[0]
             outdict['pred_population'][:,rep] = output[1]
             outdict['coexistence'][rep] = output[2]
+            print("saving stuff yep")
         # outdict['lattice'] = output[3]
         # outdict['sites'] = sites
         return outdict
