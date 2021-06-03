@@ -129,12 +129,12 @@ class Plotter():
             lattice = np.load(_dir+"lattice{suffix:s}.npy".format(suffix=suffix))
             # pred_population = np.load(_dir+"pred_population{suffix:s}.npy".format(suffix=suffix))
             # print(pred_population)
-            # sites = np.load(_dir+"sites{suffix:s}.npy".format(suffix=suffix))
+            sites = np.load(_dir+"sites{suffix:s}.npy".format(suffix=suffix))
             # Reshape
             L_sq, _ = lattice.shape
             L = int(np.sqrt(L_sq))
             lattice = lattice.reshape(L,L,args.nmeasures+1)
-            # sites = sites.reshape(L,L)
+            sites = sites.reshape(L,L)
             # Specify the colormap
             color_map = {
                 -1: np.array([255, 0, 0]),      # prey, red
@@ -147,10 +147,10 @@ class Plotter():
             im = np.ndarray(shape=(L,L,args.nmeasures+1,3), dtype=np.int64)
             for i in range(0,L):
                 for j in range(0,L):
-                    # im[i,j,:,:] = color_map[sites[i,j]]
+                    im[i,j,:,:] = color_map[sites[i,j]]
                     for t in range(args.nmeasures+1):
-                        # if lattice[i,j,t]:
-                        im[i,j,t,:] = color_map[lattice[i,j,t]]
+                        if lattice[i,j,t]:
+                            im[i,j,t,:] = color_map[lattice[i,j,t]]
             return im 
         # Initialize figure
         _figlen = max(len(_alpha), 2)
@@ -257,9 +257,9 @@ class Plotter():
         # Specify variables
         # lambda_arr = [0.05]
         # Initialize figure
-        fig, ax = plt.subplots(1, 1, figsize=(5,5), tight_layout=True)
+        fig, ax = plt.subplots(1, 1, figsize=(6,6), tight_layout=True)
         # Load data
-        lambda_arr = [0.005, 0.05, 0.5]
+        lambda_arr = [0.005, 0.02, 0.05, 0.1]
         for i, λ in enumerate(lambda_arr):
             suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}_seed{:d}".format(
                 args.T, args.N0, args.M0, args.H, args.rho, args.mu, λ, args.sigma, args.alpha, args.seed
@@ -345,14 +345,14 @@ if __name__ == "__main__":
     ## Lattice related plots
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
-    Pjotr.plot_lattice_evolution(args)
+    # Pjotr.plot_lattice_evolution(args)
     # Pjotr.plot_lattice_initial(args)
     # Pjotr.plot_fragmented_lattice(args)
 
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
     # Pjotr.plot_population_densities(args)
-    # Pjotr.plot_population_phase_space(args)
+    Pjotr.plot_population_phase_space(args)
 
     ## Dynamical system related plots
     

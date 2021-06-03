@@ -289,7 +289,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                             ## Displace
                             lattice[new_idx] += 1
                             occupied_sites[_k] = new_idx
-    return prey_population, pred_population, coexistence
+    return prey_population, pred_population, coexistence#, lattice_configuration
 
 #################################
 # Wrapper for the numba modules #
