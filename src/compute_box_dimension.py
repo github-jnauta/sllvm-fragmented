@@ -6,10 +6,16 @@ from numpy.core.fromnumeric import mean
 
 ###################
 # Numba functions #
-# @numba.jit(nopython=True, cache=True)
+
+#####################
+# Regular functions #
 def compute_box_dimension(lattice):
     """ Compute the box-dimension of a binary lattice where 0s represent empty
         sites, and 1s occupied sites
+        Since we apply np.roll, which is currently not (fully!) supported by Numba,
+        we cannot (yet) use Numba to (i) call this function from Numba code or 
+        (ii) potentially speed up the computation. It is most likely best to call
+        this script from native Python code.
 
         Parameters
         ----------
@@ -23,18 +29,20 @@ def compute_box_dimension(lattice):
     _lattice = np.reshape(lattice, (L,L))
     # Specify the box sizes
     nsizes = np.int64(np.log2(L))
-    _size = 1
-    box_sizes = [_size*2**i for i in range(nsizes)]
-    Dbox = np.zeros(len(box_sizes))
-    # Compute box-dimension when box encompasses entire lattice
-    Dbox[0] = np.sum(_lattice)
+    box_sizes = np.array([2**i for i in range(nsizes)], dtype=np.int64)
+    # Allocate
+    Nbox = np.zeros(nsizes)
+    # Initialize the value when the box-size is equal to the lattice spacing of 1
+    Nbox[0] = np.sum(lattice)
     # Loop through all the different box sizes and apply the box-counting method
-    for i in range(nsizes-1, 0, -1):
+    for i in range(nsizes):
         # Since we have periodic boundary conditions, just start at (0,0)
         idx = 0 
         ## Compute the number of filled lattice sites within the box at each offset
         # The number of offsets (corner of the box) is equal to the 2*box_size - 1
-        delta = [[0,n] for n in range(box_sizes[i])] + [[n,0] for n in range(1,box_sizes[i])]
+        delta = np.array([
+            [0,n] for n in range(box_sizes[i])] + [[n,0] for n in range(1,box_sizes[i])
+        ], dtype=np.int64)
         noffsets = 2*box_sizes[i] - 1
         N = np.zeros(noffsets)
         for j in range(noffsets):
@@ -51,11 +59,23 @@ def compute_box_dimension(lattice):
             # Compute number of filled boxes
             N[j] = np.sum(binary_mean_lattice)
         
-        Dbox[i] = np.mean(N) 
-    return Dbox, box_sizes
+        Nbox[i] = np.mean(N) 
+    return Nbox, box_sizes
 
 if __name__ == "__main__":
     # Construct an example lattice
-    L = 2**9
+    L = 2**7
     lattice = np.random.randint(2, size=L*L, dtype=np.int64)
-    Dbox, box_sizes = compute_box_dimension(lattice)
+    # lattice = np.ones(L*L, dtype=np.int64)
+    Nbox, box_sizes = compute_box_dimension(lattice)
+
+    import matplotlib.pyplot as plt 
+    from scipy.optimize import curve_fit
+    def inverse_powlaw(x, k, D):
+        return k*(1/x)**D
+    popt, _ = curve_fit(inverse_powlaw, box_sizes[1:], Nbox[1:])
+    k, D = popt
+    print(D)
+
+    plt.loglog(box_sizes, Nbox)
+    plt.show()
