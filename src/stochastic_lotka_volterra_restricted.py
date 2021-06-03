@@ -8,10 +8,10 @@
     of two-dimensional fractional Brownian motion. Predators are initially
     distributed uniformly on empty sites. 
 
-    Most modules are implemented using numba for speed purposes. Numba modules 
-    are identified by the header @numba.jit(), and are cached (cache=True). Hence,
-    while the initial run wherein these modules need to be compiled might be a bit
-    slow(er), subsequent calls should be much faster.
+    Most modules are implemented using Numba for speed purposes. Numba modules 
+    are identified by the header @numba.jit(nopython=True), and they are cached 
+    (cache=True). Hence, while the initial run wherein these modules need to be 
+    compiled might be a bit slow(er), subsequent calls should be much faster.
 """
 # Import necessary libraries
 import numpy as np 
@@ -25,6 +25,10 @@ import src.lattice
 # General functions
 @numba.jit(nopython=True, cache=True)
 def nb_set_seed(seed):
+    """ Specifically call the seed from Numba code, as calling numpy.random.seed()
+        from non-Numba code (or from object mode code) will seed the Numpy random 
+        generator, not the Numba random generator.
+    """
     np.random.seed(seed)
 
 @numba.jit(nopython=True, cache=True)

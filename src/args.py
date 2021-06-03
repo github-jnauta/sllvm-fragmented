@@ -57,7 +57,7 @@ class Args():
         )
         ## Numerical variables
         parser.add_argument(
-            '--reps', dest='reps', type=int, default=30,
+            '--reps', dest='reps', type=int, default=10,
             help='specify the number of repetitions per resource landscape'
         )
         parser.add_argument(
