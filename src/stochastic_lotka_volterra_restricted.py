@@ -340,23 +340,18 @@ class SLLVM(object):
             sites = self.Lattice.binary_lattice(_lattice, args.rho)
         # Initialize dictionary
         outdict = {}
-        outdict['prey_population'] = np.zeros((args.nmeasures+1, args.reps), dtype=np.int64)
-        outdict['pred_population'] = np.zeros((args.nmeasures+1, args.reps), dtype=np.int64)
-        outdict['coexistence'] = np.zeros(args.reps, dtype=np.int64)
-        # Repeat the SLLVM for the lattice and gather results
-        for rep in range(args.reps):
-            output = nb_SLLVM(
-                args.T, args.N0, args.M0, sites, 
-                args.mu, args.lambda_, args.sigma, args.alpha,
-                args.nmeasures
-            )
-            outdict['prey_population'][:,rep] = output[0]
-            outdict['pred_population'][:,rep] = output[1]
-            outdict['coexistence'][rep] = output[2]
+        # Run 
+        output = nb_SLLVM(
+            args.T, args.N0, args.M0, sites, 
+            args.mu, args.lambda_, args.sigma, args.alpha,
+            args.nmeasures
+        )
+        # Save
+        outdict['prey_population'] = output[0]
+        outdict['pred_population'] = output[1]
+        outdict['coexistence'] = output[2]
         # outdict['lattice'] = output[3]
         # outdict['sites'] = sites
-        print(output[0])
-        print(output[1])
         return outdict
 
     

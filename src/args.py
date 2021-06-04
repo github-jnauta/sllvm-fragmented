@@ -9,7 +9,7 @@ class Args():
         parser = argparse.ArgumentParser("Specify specific variables")
         ## Landscape variables
         parser.add_argument(
-            '--m', dest='m', type=int, default=8,
+            '--m', dest='m', type=int, default=9,
             help='level of resolution that defines the LxL lattice with L=2**m'
         )
         parser.add_argument(
@@ -33,7 +33,7 @@ class Args():
         )
         ## Forager variables
         parser.add_argument(
-            '--T', dest='T', type=int, default=2500, help='number of Monte-Carlo steps'
+            '--T', dest='T', type=int, default=5000, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
             '--alpha', dest='alpha', type=float, default=3., 
