@@ -282,31 +282,51 @@ class Plotter():
         # Load variable arrays
         lambda_arr = np.loadtxt(_rdir+"lambda.txt")
         # Initialize figure
-        fig, ax = plt.subplots(1, 1, figsize=(6,4), tight_layout=True)
+        fig, axes = plt.subplots(1, 2, figsize=(8,3), tight_layout=True)
         # Load data
         suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_sig{:.4f}_a{:.3f}".format(
             args.T, args.N0, args.M0, args.H, args.rho, args.mu, args.sigma, args.alpha
         )
         _N = np.load(_rdir+f"N{suffix}.npy") / L**2
         _M = np.load(_rdir+f"M{suffix}.npy") / L**2
-        N, M = np.mean(_N, axis=1), np.mean(_M, axis=1)        
-        # Plot        
+        N, M = np.mean(_N, axis=1), np.mean(_M, axis=1)
+        # Plot population densities
+        ax = axes[0]
         ax_M = ax.twinx()
-        ax.semilogx(
+        lineN = ax.semilogx(
             lambda_arr, N, color='k', marker='o', mfc='white', markersize=4,
-            label=r"$N(t)$"
+            label=r"$N^*$"
         )
-        ax_M.semilogx(
-            lambda_arr, M, color='r', marker='s', mfc='white', markersize=4,
-            label=r"$M(t)$"
+        lineM = ax_M.semilogx(
+            lambda_arr, M, color='k', linestyle='--', marker='s', mfc='white', markersize=4,
+            label=r"$M^*$"
+        )
+        # Plot the diversity metric
+        def true_diversity(N, M, q=1):
+            if q == 1:
+                return np.exp(- M * np.ma.log(M).filled(0) - N * np.ma.log(N).filled(0))
+            else:
+                basic_sum = N**q + M**q               
+                return np.ma.power(basic_sum, (1/(1-q))).filled(0)
+        D = true_diversity(N, M, q=1)
+        axes[1].semilogx(
+            lambda_arr, D, color='k', marker='D', mfc='white',
+            markersize=4
         )
         # Limits, labels, etc
-        ax.set_xlim(min(lambda_arr), max(lambda_arr))
-        ax.set_ylim(bottom=0)
-        ax_M.set_ylim(bottom=0)
-        ax.set_xlabel(r"$t$", fontsize=14)
-        ax.set_ylabel(r"population", fontsize=14)
-        ax.legend(fontsize=13, loc='center left', frameon=False)
+        lines = lineN + lineM 
+        labels = [line.get_label() for line in lines]
+        for i, ax in enumerate(axes):
+            ax.set_xlim(min(lambda_arr), max(lambda_arr))
+            if i == 0:
+                ax.set_ylim(bottom=0)
+                ax_M.set_ylim(0, 1)
+                ax.set_ylabel(r"population density", fontsize=14)
+                ax.legend(lines, labels, fontsize=13, loc='upper right', frameon=False)
+            else:
+                ax.set_ylim(bottom=1)
+                ax.set_ylabel(r"true diversity $^1D$", fontsize=14)
+            ax.set_xlabel(r"$\lambda$", fontsize=14)
         
 
     ###########################
@@ -351,8 +371,8 @@ if __name__ == "__main__":
 
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
-    # Pjotr.plot_population_densities(args)
-    Pjotr.plot_population_phase_space(args)
+    Pjotr.plot_population_densities(args)
+    # Pjotr.plot_population_phase_space(args)
 
     ## Dynamical system related plots
     
