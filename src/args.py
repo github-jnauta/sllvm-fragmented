@@ -9,7 +9,7 @@ class Args():
         parser = argparse.ArgumentParser("Specify specific variables")
         ## Landscape variables
         parser.add_argument(
-            '--m', dest='m', type=int, default=9,
+            '--m', dest='m', type=int, default=8,
             help='level of resolution that defines the LxL lattice with L=2**m'
         )
         parser.add_argument(
@@ -20,7 +20,7 @@ class Args():
             '--H', dest='H', type=float, default=0.9, help='Hurst exponent'
         )
         parser.add_argument(
-            '--rho', dest='rho', type=float, default=0.05, help='level of occupancy'
+            '--rho', dest='rho', type=float, default=1, help='level of occupancy'
         )
         parser.add_argument(
             '--M0', dest='M0', type=int, default=-1, 
@@ -33,7 +33,7 @@ class Args():
         )
         ## Forager variables
         parser.add_argument(
-            '--T', dest='T', type=int, default=2500, help='number of Monte-Carlo steps'
+            '--T', dest='T', type=int, default=3000, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
             '--alpha', dest='alpha', type=float, default=3., 
@@ -57,7 +57,7 @@ class Args():
         )
         ## Numerical variables
         parser.add_argument(
-            '--reps', dest='reps', type=int, default=10,
+            '--reps', dest='reps', type=int, default=30,
             help='specify the number of repetitions per resource landscape'
         )
         parser.add_argument(
