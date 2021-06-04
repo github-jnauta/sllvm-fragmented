@@ -158,7 +158,6 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
 
     ## Run the stochastic Lotka-Volterra system
     for t in range(1,T+1):
-        print(t, M, N)
         ## Store desired variables every dmeas timesteps
         if t % dmeas == 0:
             imeas = t // dmeas
@@ -351,11 +350,9 @@ class SLLVM(object):
                 args.mu, args.lambda_, args.sigma, args.alpha,
                 args.nmeasures
             )
-            print(rep)
             outdict['prey_population'][:,rep] = output[0]
             outdict['pred_population'][:,rep] = output[1]
             outdict['coexistence'][rep] = output[2]
-            print("saving stuff yep")
         # outdict['lattice'] = output[3]
         # outdict['sites'] = sites
         return outdict
