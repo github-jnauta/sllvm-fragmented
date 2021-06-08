@@ -150,12 +150,12 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     prey_population = np.zeros(nmeasures+1, dtype=np.int64)
     pred_population = np.zeros(nmeasures+1, dtype=np.int64)
     coexistence = 1
-    lattice_configuration = np.zeros((L*L, nmeasures+1), dtype=np.int64)    
+    # lattice_configuration = np.zeros((L*L, nmeasures+1), dtype=np.int64)    
     # Store initial values
     prey_population[0] = M0 
     pred_population[0] = N0 
-    lattice_configuration[prey_lattice,0] = -1 
-    lattice_configuration[pred_lattice>0,0] = 1
+    # lattice_configuration[prey_lattice,0] = -1 
+    # lattice_configuration[pred_lattice>0,0] = 1
 
     ##############################################
     ## Run the stochastic Lotka-Volterra system ##
@@ -165,8 +165,8 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             imeas = t // dmeas
             prey_population[imeas] = M 
             pred_population[imeas] = N
-            lattice_configuration[prey_lattice,imeas] = -1 
-            lattice_configuration[pred_lattice>0,imeas] = 1
+            # lattice_configuration[prey_lattice,imeas] = -1 
+            # lattice_configuration[pred_lattice>0,imeas] = 1
 
         ## Stop the simulation if:
         # prey goes extinct, as predators will also go extinct
@@ -287,7 +287,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                             occupied_sites[_k] = new_idx
             # else:
             #     print(t, tau, idx, "nothing"); exit()
-    return prey_population, pred_population, coexistence, lattice_configuration
+    return prey_population, pred_population, coexistence
 
 #################################
 # Wrapper for the numba modules #
@@ -318,8 +318,6 @@ class SLLVM(object):
         outdict['prey_population'] = output[0]
         outdict['pred_population'] = output[1]
         outdict['coexistence'] = output[2]
-        outdict['lattice'] = output[3]
-        outdict['sites'] = sites
         return outdict
 
     
