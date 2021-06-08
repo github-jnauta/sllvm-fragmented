@@ -22,7 +22,7 @@ class Lattice(object):
         _lattice = shifted_lattice / cutoff                 # Normalize lattice
         _lattice[_lattice >= 1] = 1                         # All above cutoff to 1
         _lattice[_lattice < 1] = 0                          # All below to 0
-        return np.asarray(_lattice, dtype=np.int64)
+        return np.asarray(_lattice, dtype=np.bool_)
 
     def SpectralSynthesis2D(self, L, H, sig=1, bounds=[0,1]):
         """ Generate fractional Brownian in two dimensions 
