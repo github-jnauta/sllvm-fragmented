@@ -194,10 +194,13 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
         # A single loop that selects (on average) each occupied site once is considered
         # a single Monte Carlo time step
         for tau in range(temp_K):
+            # Break out of the MC step if no site is occupied
+            if K == 0:
+                break 
             # Select a random occupied site
             site_is_occupied = False 
-            while not site_is_occupied:
-                _k = np.random.randint(0, K)
+            while not site_is_occupied:                
+                _k = np.random.randint(0, temp_K)
                 site_is_occupied = occupied_mask[_k]
             idx = occupied_sites[_k]
             neighbors = nb_get_1D_neighbors(idx, L)
@@ -337,19 +340,16 @@ class SLLVM(object):
             sites = self.Lattice.binary_lattice(_lattice, args.rho)
         # Initialize dictionary
         outdict = {}
-        outdict['prey_population'] = np.zeros((args.nmeasures+1, args.reps), dtype=np.int64)
-        outdict['pred_population'] = np.zeros((args.nmeasures+1, args.reps), dtype=np.int64)
-        outdict['coexistence'] = np.zeros(args.reps, dtype=np.int64)
-        # Repeat the SLLVM for the lattice and gather results
-        for rep in range(args.reps):
-            output = nb_SLLVM(
-                args.T, args.N0, args.M0, sites, 
-                args.mu, args.lambda_, args.sigma, args.alpha,
-                args.nmeasures
-            )
-            outdict['prey_population'][:,rep] = output[0]
-            outdict['pred_population'][:,rep] = output[1]
-            outdict['coexistence'][rep] = output[2]
+        # Run 
+        output = nb_SLLVM(
+            args.T, args.N0, args.M0, sites, 
+            args.mu, args.lambda_, args.sigma, args.alpha,
+            args.nmeasures
+        )
+        # Save
+        outdict['prey_population'] = output[0]
+        outdict['pred_population'] = output[1]
+        outdict['coexistence'] = output[2]
         # outdict['lattice'] = output[3]
         # outdict['sites'] = sites
         return outdict

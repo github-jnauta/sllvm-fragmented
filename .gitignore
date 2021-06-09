@@ -20,6 +20,9 @@
 /bash/get_dir.py
 # Do not include output files
 /out/*
+# Do not include debugging tools
+/line_profiler/
+/line_profiler/*/
 
 #######################
 # TEMPLATE .gitignore #

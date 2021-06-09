@@ -1,7 +1,7 @@
 """ Contains arguments that specify variables used in the simulation """
 # Import necessary libraries
 import argparse
-import numpy as np 
+import numpy as np
 
 class Args():
     """ Arguments """
@@ -33,10 +33,7 @@ class Args():
         )
         ## Forager variables
         parser.add_argument(
-            '--T', dest='T', type=int, default=3000, help='number of Monte-Carlo steps'
-        )
-        parser.add_argument(
-            '--alpha', dest='alpha', type=float, default=3., 
+            '--alpha', dest='alpha', type=float, default=-1,
             help='specify Levy parameter of the forager(s)'
         )
         parser.add_argument(
@@ -44,7 +41,7 @@ class Args():
             help='specify predator mortality rate'
         )
         parser.add_argument(
-            '--lambda', dest='lambda_', type=float, default=0.01,
+            '--lambda', dest='lambda_', type=float, default=0.05,
             help='specify predator reproduction rate'
         )
         parser.add_argument(
@@ -57,11 +54,10 @@ class Args():
         )
         ## Numerical variables
         parser.add_argument(
-            '--reps', dest='reps', type=int, default=30,
-            help='specify the number of repetitions per resource landscape'
+            '--T', dest='T', type=int, default=5000, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
-            '--k', dest='nmeasures', type=int, default=50,
+            '--k', dest='nmeasures', type=int, default=25,
             help='specify the number of times population size needs to be measured'
         )
         ## Boolean variables

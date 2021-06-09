@@ -220,20 +220,20 @@ class Plotter():
     # Population related plots #
     def plot_population_dynamics(self, args):
         L = 2**args.m
-        _dir = args.ddir+"sllvm/{L:d}x{L:d}/".format(L=L)
+        _dir = args.rdir+"sllvm/{L:d}x{L:d}/".format(L=L)
         # Specify variables
-        _alpha = [1, 2, 3]
+        rho_arr = np.loadtxt(_dir+"rho.txt")
         # Initialize figure
         fig, ax = plt.subplots(1,1, figsize=(6, 4), tight_layout=True)
         # Plot
-        for i, alpha in enumerate(_alpha):
-            suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}_seed{:d}".format(
-                args.T, args.N0, args.M0, args.H, args.rho, args.mu, args.lambda_, args.sigma, alpha, args.seed
+        for i, rho in enumerate(rho_arr):
+            suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}".format(
+                args.T, args.N0, args.M0, args.H, rho, args.mu, args.lambda_, args.sigma, args.alpha
             )
-            _N = np.load(_dir+"pred_population{suffix:s}.npy".format(suffix=suffix)) 
-            _M = np.load(_dir+"prey_population{suffix:s}.npy".format(suffix=suffix)) 
+            _N = np.load(_dir+"Ntime{suffix:s}.npy".format(suffix=suffix)) 
+            _M = np.load(_dir+"Mtime{suffix:s}.npy".format(suffix=suffix)) 
             N = np.mean(_N, axis=1) / L**2
-            M = np.mean(_M, axis=1) / L**2
+            M = np.mean(_M, axis=1) / (rho*L**2)
             # N = _N / L**2 
             # M = _M / L**2
             xax = args.T / args.nmeasures * np.arange(args.nmeasures+1)
@@ -241,8 +241,8 @@ class Plotter():
                 xax, N, color=colors[i], linestyle='-', linewidth=0.85
             )
             ax.plot(
-                xax, M, color=colors[i], linestyle='--', linewidth=0.85, 
-                label=r"$\alpha=%.1f$"%(alpha)
+                xax, M, color=colors[i], linestyle='--', linewidth=0.85,
+                label=r"$\rho=%.2f$"%(rho)
             )
         # Limits, labels, etc
         ax.set_xlim(0, args.T)
@@ -280,33 +280,60 @@ class Plotter():
         L = 2**args.m 
         _rdir = args.rdir+"sllvm/{L:d}x{L:d}/".format(L=L)
         # Load variable arrays
-        lambda_arr = np.loadtxt(_rdir+"lambda.txt")
+        rho_arr = np.loadtxt(_rdir+"rho.txt")[1:]
+        # lambda_arr = np.loadtxt(_rdir+"lambda.txt")
+        lambda_arr = np.logspace(-3,0,30)
         # Initialize figure
-        fig, ax = plt.subplots(1, 1, figsize=(6,4), tight_layout=True)
+        fig, axes = plt.subplots(1, 3, figsize=(12,3), tight_layout=True)
         # Load data
-        suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_sig{:.4f}_a{:.3f}".format(
-            args.T, args.N0, args.M0, args.H, args.rho, args.mu, args.sigma, args.alpha
-        )
-        _N = np.load(_rdir+f"N{suffix}.npy") / L**2
-        _M = np.load(_rdir+f"M{suffix}.npy") / L**2
-        N, M = np.mean(_N, axis=1), np.mean(_M, axis=1)        
-        # Plot        
-        ax_M = ax.twinx()
-        ax.semilogx(
-            lambda_arr, N, color='k', marker='o', mfc='white', markersize=4,
-            label=r"$N(t)$"
-        )
-        ax_M.semilogx(
-            lambda_arr, M, color='r', marker='s', mfc='white', markersize=4,
-            label=r"$M(t)$"
-        )
+        for i, ρ in enumerate(rho_arr):
+            suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_sig{:.4f}_a{:.3f}".format(
+                args.T, args.N0, args.M0, args.H, ρ, args.mu, args.sigma, args.alpha
+            )
+            _N = np.load(_rdir+f"N{suffix}.npy") / L**2
+            _M = np.load(_rdir+f"M{suffix}.npy") / (ρ*L**2)
+            N, M = np.mean(_N, axis=1), np.mean(_M, axis=1)
+            # Plot population densities
+            axes[0].semilogx(
+                lambda_arr, N, color=colors[i], marker=markers[i], mfc='white', 
+                markersize=4, label=r"$\rho={:.2f}$".format(ρ)
+            )
+            axes[1].semilogx(
+                lambda_arr, M, color=colors[i], marker=markers[i], mfc='white', 
+                markersize=4, label=r"$M^*$"
+            )
+            # Plot the diversity metric
+            def true_diversity(N, M, q=1):
+                if q == 1:
+                    return np.exp(- M * np.ma.log(M).filled(0) - N * np.ma.log(N).filled(0))
+                else:
+                    basic_sum = N**q + M**q               
+                    return np.ma.power(basic_sum, (1/(1-q))).filled(0)
+            D = true_diversity(N, M, q=1)
+            axes[2].semilogx(
+                lambda_arr, D, color=colors[i], marker=markers[i], mfc='white',
+                markersize=4
+            )
         # Limits, labels, etc
-        ax.set_xlim(min(lambda_arr), max(lambda_arr))
-        ax.set_ylim(bottom=0)
-        ax_M.set_ylim(bottom=0)
-        ax.set_xlabel(r"$t$", fontsize=14)
-        ax.set_ylabel(r"population", fontsize=14)
-        ax.legend(fontsize=13, loc='center left', frameon=False)
+        # lines = lineN + lineM 
+        # labels = [line.get_label() for line in lines]
+        for i, ax in enumerate(axes):
+            ax.set_xlim(min(lambda_arr), max(lambda_arr))
+            if i == 0:
+                ax.set_ylim(bottom=0)
+                ax.set_ylabel(r"predator density $N^*$", fontsize=14)
+                # ax.legend(lines, labels, fontsize=13, loc='upper right', frameon=False)
+                ax.legend(
+                    loc='upper left', fontsize=13, frameon=False, handletextpad=0.25,
+                    borderaxespad=0.1
+                )
+            elif i == 1:
+                ax.set_ylim(0, 1)
+                ax.set_ylabel(r"prey density $M^*$", fontsize=14)
+            else:
+                ax.set_ylim(bottom=1)
+                ax.set_ylabel(r"true diversity $^1D$", fontsize=14)
+            ax.set_xlabel(r"$\lambda$", fontsize=14)
         
 
     ###########################
@@ -351,8 +378,8 @@ if __name__ == "__main__":
 
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
-    # Pjotr.plot_population_densities(args)
-    Pjotr.plot_population_phase_space(args)
+    Pjotr.plot_population_densities(args)
+    # Pjotr.plot_population_phase_space(args)
 
     ## Dynamical system related plots
     
