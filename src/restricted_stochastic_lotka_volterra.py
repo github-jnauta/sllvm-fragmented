@@ -160,7 +160,6 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     ##############################################
     ## Run the stochastic Lotka-Volterra system ##
     for t in range(1,T+1):
-        print(N, M, K)
         ## Store desired variables every dmeas timesteps
         if t % dmeas == 0:
             imeas = t // dmeas

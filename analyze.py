@@ -20,8 +20,8 @@ class Analyzer():
         lambda_arr = np.loadtxt(_dir+"lambda.txt")
         seeds = np.loadtxt(_dir+"seeds.txt", dtype=int)
         # Allocate
-        N = np.zeros((len(lambda_arr), args.reps*len(seeds)))
-        M = np.zeros((len(lambda_arr), args.reps*len(seeds)))
+        N = np.zeros((len(lambda_arr), len(seeds)))
+        M = np.zeros((len(lambda_arr), len(seeds)))
         for i, lambda_ in enumerate(lambda_arr):
             for j, seed in enumerate(seeds):
                 suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}_seed{:d}".format(
@@ -32,8 +32,8 @@ class Analyzer():
                 _M = np.load(_dir+"prey_population{suffix:s}.npy".format(suffix=suffix))
                 _Nmean = np.mean(_N[-5:], axis=0)
                 _Mmean = np.mean(_M[-5:], axis=0)
-                N[i,j*args.reps:(j+1)*args.reps] = _Nmean
-                M[i,j*args.reps:(j+1)*args.reps] = _Mmean
+                N[i,j] = _Nmean
+                M[i,j] = _Mmean
         # Save
         save_suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_sig{:.4f}_a{:.3f}".format(
             args.T, args.N0, args.M0, args.H, args.rho, 
