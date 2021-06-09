@@ -33,7 +33,7 @@ class Args():
         )
         ## Forager variables
         parser.add_argument(
-            '--alpha', dest='alpha', type=float, default=3., 
+            '--alpha', dest='alpha', type=float, default=-1,
             help='specify Levy parameter of the forager(s)'
         )
         parser.add_argument(

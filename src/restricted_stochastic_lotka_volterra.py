@@ -160,6 +160,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     ##############################################
     ## Run the stochastic Lotka-Volterra system ##
     for t in range(1,T+1):
+        print(N, M, K)
         ## Store desired variables every dmeas timesteps
         if t % dmeas == 0:
             imeas = t // dmeas
@@ -266,6 +267,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                                 curr_length.append(0)
                                 didx.append(0)
                                 current_max_id += 1
+                                N += 1
                             else:
                                 # Remove the site previously occupied by the predator
                                 occupied_sites[_k], occupied_sites[-1] = occupied_sites[-1], occupied_sites[_k]
