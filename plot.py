@@ -160,10 +160,10 @@ class Plotter():
         ims = []
         for i, alpha in enumerate(_alpha):
             axes[i].xaxis.tick_top()
-            axes[i].text(
-                0.05, 0.9, r"$\alpha={:.2f}$".format(alpha), transform=axes[i].transAxes,
-                fontsize=14, ha='left', bbox=dict(boxstyle="round", ec='none', fc='white')
-            )
+            # axes[i].text(
+            #     0.05, 0.9, r"$\alpha={:.2f}$".format(alpha), transform=axes[i].transAxes,
+            #     fontsize=14, ha='left', bbox=dict(boxstyle="round", ec='none', fc='white')
+            # )
             ims.append(axes[i].imshow(images[i][:,:,0,:]))
         
         def update(t):
@@ -372,13 +372,13 @@ if __name__ == "__main__":
     ## Lattice related plots
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
-    # Pjotr.plot_lattice_evolution(args)
+    Pjotr.plot_lattice_evolution(args)
     # Pjotr.plot_lattice_initial(args)
     # Pjotr.plot_fragmented_lattice(args)
 
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
-    Pjotr.plot_population_densities(args)
+    # Pjotr.plot_population_densities(args)
     # Pjotr.plot_population_phase_space(args)
 
     ## Dynamical system related plots
