@@ -17,7 +17,8 @@
 from numba.core.errors import new_error_context
 import numpy as np 
 from collections import deque
-import numba 
+import numba
+from numpy.random import rand 
 # Import modules
 import src.lattice
 
@@ -61,9 +62,10 @@ def nb_get_1D_neighbors(idx, L):
     # Convert index to 2D index
     i, j = idx // L, idx % L 
     neighbors = [[(i+1)%L, j], [(i-1)%L,j], [i,(j+1)%L], [i,(j-1)%L]]
-    neighbors_1D = [n[0]*L + n[1] for n in neighbors]
+    neighbors_1D = np.array([n[0]*L + n[1] for n in neighbors], dtype=np.int64)
     return neighbors_1D
 
+# @profile
 @numba.jit(nopython=True, cache=True)
 def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     """ Runs the stochastic lattice Lotka-Volterra model
@@ -134,6 +136,9 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
 
     ## Compute list that contains indices (positions) of occupied sites
     occupied_sites = [idx for idx in prey_idxs] + [idx for idx in pred_idxs]
+    ## Generate an empty set for optimisation down the line
+    not_counted = {1}
+    not_counted.remove(1)
     ## Allocate lists needed for individual predator behavior
     gen = range(N0)
     flight_length = [i for i in gen]    # Sampled flight length of individual predators
@@ -179,43 +184,49 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             prey_population[imeas:] = L**2 
             break 
         
-        ## Select random occupied sites        
-        for tau in range(K):
+        # Generate random numbers
+        steps = K 
+        randoms = np.random.random(steps)
+
+        ## Evolve random sites according to possible transitions
+        for tau in range(steps):
             # Select a random occupied site
-            _k = np.random.randint(0, K)
-            # print(_k, K, len(occupied_sites), pred_lattice)
+            _k = np.int64(K*randoms[tau])
             idx = occupied_sites[_k]
             neighbors = nb_get_1D_neighbors(idx, L)
             ## If the site contains prey, reproduce with probability (rate) σ
             #NOTE: Prey only reproduces if it has an empty neighboring site
             if prey_lattice[idx]:
                 # Check if neighboring sites are empty
-                empty_neighbors = [
-                    n for n in neighbors if sites[n] and (prey_lattice[n]==0 and pred_lattice[n]==0)
-                ]
+                # (NOTE: empty means: eligible site without prey or predator)
+                empty_sites = np.logical_and(
+                    sites[neighbors], np.logical_and(~prey_lattice[neighbors], pred_lattice[neighbors]==0)
+                )
+                empty_neighbors = neighbors[empty_sites]
                 _nempty = len(empty_neighbors)
-                # Check if prey site is surrounded by other prey
-                eligible_neighbors = [n for n in neighbors if sites[n] and not prey_lattice[n]]
-                _neligible = len(eligible_neighbors)
                 ## If there are empty neighboring sites, reproduce with rate σ
                 if _nempty > 0:
                     # Randomly sample one of the eligible neighboring sites
-                    neighbor = empty_neighbors[np.random.randint(0,_nempty)]
+                    neighbor = empty_neighbors[np.int64(_nempty*randoms[tau])]
                     # Place prey there with probability σ
                     if np.random.random() < sigma:
                         prey_lattice[neighbor] = True       # Place prey on prey lattice
                         occupied_sites.append(neighbor)     # Append occupied site to the list
                         M += 1
                         K += 1
-                ## If it is surrounded, remove it from the occupied sites
-                # (NOTE that even though the site is still occupied, we should not take
-                # it into account in our main loop as prey cannot reproduce)
-                elif _neligible == 0:                    
-                    occupied_sites[_k], occupied_sites[-1] = occupied_sites[-1], occupied_sites[_k]
-                    del occupied_sites[-1]
-                    K -= 1
-                else:
-                    pass
+                else:                   
+                    ## If it is surrounded, remove it from the occupied sites
+                    # (NOTE that even though the site is still occupied, we should not take
+                    # it into account in our main loop as prey cannot reproduce)
+                    eligible_neighbors = empty_neighbors[
+                        np.logical_and(sites[empty_neighbors], ~prey_lattice[empty_neighbors])
+                    ]
+                    _neligible = len(eligible_neighbors)
+                    if _neligible == 0:
+                        occupied_sites[_k], occupied_sites[-1] = occupied_sites[-1], occupied_sites[_k]
+                        del occupied_sites[-1]
+                        K -= 1
+                        not_counted.add(idx)
             ## If the site contains a predator, check in order
             # (i)   die with mortality rate μ
             # (ii)  start a new flight
@@ -275,19 +286,28 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                                 # Update the predator lattice 
                                 pred_lattice[new_idx] = pred_lattice[idx]
                                 pred_lattice[idx] = 0
-                            # If the site was previously occupied, but was not included
-                            # in the occupied sites as the prey was surrounded by prey
-                            # on all sides (see above), add the now again occupied site
-                            if new_idx not in occupied_sites:
+                            # If the site was previously not counted due to prey being surrounded
+                            # on all sides, we need to re-include these sites and all its neighbors
+                            if new_idx in not_counted:
                                 occupied_sites.append(new_idx)
+                                not_counted.remove(new_idx)
                                 K += 1
+                                # Get the neighbors
+                                _neighbors = nb_get_1D_neighbors(new_idx, L)
+                                # Loop through the neighbors
+                                for _idx in _neighbors:
+                                    # Get their neighbors
+                                    __neighbors = nb_get_1D_neighbors(_idx, L)
+                                    for __idx in __neighbors:
+                                        if __idx in not_counted:
+                                            occupied_sites.append(__idx)
+                                            not_counted.remove(__idx)
+                                            K += 1
                         else:
                             ## Displace
                             pred_lattice[new_idx] = pred_lattice[idx]
                             pred_lattice[idx] = 0 
                             occupied_sites[_k] = new_idx
-            # else:
-            #     print(t, tau, idx, "nothing"); exit()
     return prey_population, pred_population, coexistence
 
 #################################
@@ -319,6 +339,8 @@ class SLLVM(object):
         outdict['prey_population'] = output[0]
         outdict['pred_population'] = output[1]
         outdict['coexistence'] = output[2]
+        # outdict['sites'] = sites 
+        # outdict['lattice'] = output[3]
         return outdict
 
     

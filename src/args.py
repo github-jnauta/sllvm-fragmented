@@ -41,7 +41,7 @@ class Args():
             help='specify predator mortality rate'
         )
         parser.add_argument(
-            '--lambda', dest='lambda_', type=float, default=0.05,
+            '--lambda', dest='lambda_', type=float, default=0.01,
             help='specify predator reproduction rate'
         )
         parser.add_argument(
@@ -56,6 +56,7 @@ class Args():
         parser.add_argument(
             '--T', dest='T', type=int, default=5000, help='number of Monte-Carlo steps'
         )
+        parser.add_argument(
         parser.add_argument(
             '--k', dest='nmeasures', type=int, default=25,
             help='specify the number of times population size needs to be measured'

@@ -59,7 +59,7 @@ fi
 seeds=$(seq 1 1 $NSEEDS)
 # lambda=$(seq 0 0.05 1)
 rho=(0.1 0.2 1)
-python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,0,30), fmt="%.4e")'
+python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,np.log(0.3),30), fmt="%.4e")'
 mkdir -p $DATADIR
 echo "${seeds[@]}" > $DATADIR/seeds.txt
 echo "${rho[@]}" > $DATADIR/rho.txt
