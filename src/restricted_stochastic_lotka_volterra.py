@@ -69,9 +69,18 @@ def nb_get_1D_neighbors(idx, L):
 @numba.jit(nopython=True, cache=True)
 def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     """ Runs the stochastic lattice Lotka-Volterra model
-        While the lattice is a 2D (square) lattice, for speed we first convert everyting
-        to a 1D lattice, where neighbors and periodic boundary conditions properly need
-        to be taken into account.
+        While the lattice is a 2D (square) lattice, we first convert everyting to a 
+        1D lattice, where neighbors and periodic boundary conditions properly need to 
+        be taken into account. The reason is that it makes it easier to generate arrays
+        of which the components are a single integer (1D index) instead of an array of
+        two integers (2D index). 
+        While most common Monte Carlo approaches to SLLVMs randomly select sites and act
+        based on the type of site, this leads to some inefficiencies when either selecting
+        empty sites or when selecting sites that cannot do anything, e.g. prey cannot 
+        reproduce if they are surrounded by other prey. To alleviate this issue, we have to
+        do some bookkeeping by generating a (boolean) lattice that holds True values for
+        sites that should not be counted in the Monte Carlo time steps. One should be careful
+        to reinclude them should they be counted again, e.g. when removing neighboring prey.
 
         Parameters
         ----------
@@ -96,7 +105,8 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
         nmeasures : np.int64
             Number of times populations are measures at equally spaced intervals
     """
-    L, _ = sites.shape 
+    # Specify some variables
+    L, _ = sites.shape
     dmeas = T // nmeasures
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
@@ -104,7 +114,6 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     alpha = np.inf if alpha == -1 else alpha    # Levy parameter
 
     ## Initialize constants
-    delta_idx = [1, -1, L, -L]
     delta_idx_2D = [[0,1], [0,-1], [1,0], [-1,0]]
     # Compute cdf for Zipf's law as the discrete (truncated) inverse power law
     _cdf = nb_truncated_zipf(alpha, L)
@@ -112,11 +121,13 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     ## Convert the eligible sites to 1D array
     sites = sites.flatten()
     ## Initialize the 1-dimensional lattices
-    #  We need two lattices:
+    #  We need three lattices:
     #  * one lattice of integer type that contains the IDs of the predators
     #  * one lattice of boolean type that contains prey
+    #  * one lattice of boolean type that contains sites not counted (see above)
     pred_lattice = np.zeros(L*L, dtype=np.int64)
     prey_lattice = np.zeros(L*L, dtype=np.bool_)
+    not_counted_lattice = np.zeros(L*L, dtype=np.bool_)
 
     ## Distribute prey on eligible sites
     prey_sites = np.where(sites==1)[0]
@@ -136,9 +147,6 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
 
     ## Compute list that contains indices (positions) of occupied sites
     occupied_sites = [idx for idx in prey_idxs] + [idx for idx in pred_idxs]
-    ## Generate an empty set for optimisation down the line
-    not_counted = {1}
-    not_counted.remove(1)
     ## Allocate lists needed for individual predator behavior
     gen = range(N0)
     flight_length = [i for i in gen]    # Sampled flight length of individual predators
@@ -146,10 +154,10 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     didx = [0 for i in gen]             # Current direction of individual predators
     current_max_id = N0 + 1
 
-    ## Initialize number of predators and prey
-    N = N0 
-    M = M0 
-    K = N0 + M0
+    ## Initialize
+    N = N0          # Number of predators       
+    M = M0          # Number of prey
+    K = N0 + M0     # Number of occupied sites
 
     ## Allocate arrays for storing measures
     prey_population = np.zeros(nmeasures+1, dtype=np.int64)
@@ -184,7 +192,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             prey_population[imeas:] = L**2 
             break 
         
-        # Generate random numbers
+        # Generate random numbers in bulk
         steps = K 
         randoms = np.random.random(steps)
 
@@ -195,10 +203,10 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             idx = occupied_sites[_k]
             neighbors = nb_get_1D_neighbors(idx, L)
             ## If the site contains prey, reproduce with probability (rate) σ
-            #NOTE: Prey only reproduces if it has an empty neighboring site
+            # (NOTE: Prey only reproduces if it has an empty neighboring site, where empty
+            #  means both eligible and no prey or predator on the site)
             if prey_lattice[idx]:
                 # Check if neighboring sites are empty
-                # (NOTE: empty means: eligible site without prey or predator)
                 empty_sites = np.logical_and(
                     sites[neighbors], np.logical_and(~prey_lattice[neighbors], pred_lattice[neighbors]==0)
                 )
@@ -226,7 +234,8 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                         occupied_sites[_k], occupied_sites[-1] = occupied_sites[-1], occupied_sites[_k]
                         del occupied_sites[-1]
                         K -= 1
-                        not_counted.add(idx)
+                        not_counted_lattice[idx] = True 
+                        # not_counted.add(idx)
             ## If the site contains a predator, check in order
             # (i)   die with mortality rate μ
             # (ii)  start a new flight
@@ -288,21 +297,18 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                                 pred_lattice[idx] = 0
                             # If the site was previously not counted due to prey being surrounded
                             # on all sides, we need to re-include these sites and all its neighbors
-                            if new_idx in not_counted:
+                            if not_counted_lattice[new_idx]:
                                 occupied_sites.append(new_idx)
-                                not_counted.remove(new_idx)
+                                not_counted_lattice[new_idx] = False 
                                 K += 1
                                 # Get the neighbors
                                 _neighbors = nb_get_1D_neighbors(new_idx, L)
                                 # Loop through the neighbors
                                 for _idx in _neighbors:
-                                    # Get their neighbors
-                                    __neighbors = nb_get_1D_neighbors(_idx, L)
-                                    for __idx in __neighbors:
-                                        if __idx in not_counted:
-                                            occupied_sites.append(__idx)
-                                            not_counted.remove(__idx)
-                                            K += 1
+                                    if not_counted_lattice[_idx]:
+                                        occupied_sites.append(_idx)
+                                        not_counted_lattice[_idx] = False 
+                                        K += 1
                         else:
                             ## Displace
                             pred_lattice[new_idx] = pred_lattice[idx]
