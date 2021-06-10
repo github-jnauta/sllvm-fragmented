@@ -86,6 +86,6 @@ class Args():
         # Parse arguments
         self.args = parser.parse_args()
 
-        ## Check some assertations and/or adapt accordingly        
+        ## Check some assertations and/or adapt accordingly
         # Check if number of measurements is allowed
         assert((self.args.T/self.args.nmeasures).is_integer()), "Invalid number of measurements"

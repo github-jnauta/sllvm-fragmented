@@ -69,9 +69,18 @@ def nb_get_1D_neighbors(idx, L):
 @numba.jit(nopython=True, cache=True)
 def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     """ Runs the stochastic lattice Lotka-Volterra model
-        While the lattice is a 2D (square) lattice, for speed we first convert everyting
-        to a 1D lattice, where neighbors and periodic boundary conditions properly need
-        to be taken into account.
+        While the lattice is a 2D (square) lattice, we first convert everyting to a 
+        1D lattice, where neighbors and periodic boundary conditions properly need to 
+        be taken into account. The reason is that it makes it easier to generate arrays
+        of which the components are a single integer (1D index) instead of an array of
+        two integers (2D index). 
+        While most common Monte Carlo approaches to SLLVMs randomly select sites and act
+        based on the type of site, this leads to some inefficiencies when either selecting
+        empty sites or when selecting sites that cannot do anything, e.g. prey cannot 
+        reproduce if they are surrounded by other prey. To alleviate this issue, we have to
+        do some bookkeeping by generating a (boolean) lattice that holds True values for
+        sites that should not be counted in the Monte Carlo time steps. One should be careful
+        to reinclude them should they be counted again, e.g. when removing neighboring prey.
 
         Parameters
         ----------
@@ -96,7 +105,8 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
         nmeasures : np.int64
             Number of times populations are measures at equally spaced intervals
     """
-    L, _ = sites.shape 
+    # Specify some variables
+    L, _ = sites.shape
     dmeas = T // nmeasures
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
@@ -104,7 +114,6 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     alpha = np.inf if alpha == -1 else alpha    # Levy parameter
 
     ## Initialize constants
-    delta_idx = [1, -1, L, -L]
     delta_idx_2D = [[0,1], [0,-1], [1,0], [-1,0]]
     # Compute cdf for Zipf's law as the discrete (truncated) inverse power law
     _cdf = nb_truncated_zipf(alpha, L)
@@ -183,7 +192,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             prey_population[imeas:] = L**2 
             break 
         
-        # Generate random numbers
+        # Generate random numbers in bulk
         steps = K 
         randoms = np.random.random(steps)
 
@@ -194,10 +203,10 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             idx = occupied_sites[_k]
             neighbors = nb_get_1D_neighbors(idx, L)
             ## If the site contains prey, reproduce with probability (rate) σ
-            #NOTE: Prey only reproduces if it has an empty neighboring site
+            # (NOTE: Prey only reproduces if it has an empty neighboring site, where empty
+            #  means both eligible and no prey or predator on the site)
             if prey_lattice[idx]:
                 # Check if neighboring sites are empty
-                # (NOTE: empty means: eligible site without prey or predator)
                 empty_sites = np.logical_and(
                     sites[neighbors], np.logical_and(~prey_lattice[neighbors], pred_lattice[neighbors]==0)
                 )
