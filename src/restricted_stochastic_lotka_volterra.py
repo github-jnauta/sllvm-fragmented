@@ -112,11 +112,13 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     ## Convert the eligible sites to 1D array
     sites = sites.flatten()
     ## Initialize the 1-dimensional lattices
-    #  We need two lattices:
+    #  We need three lattices:
     #  * one lattice of integer type that contains the IDs of the predators
     #  * one lattice of boolean type that contains prey
+    #  * one lattice of boolean type that contains sites not counted (see above)
     pred_lattice = np.zeros(L*L, dtype=np.int64)
     prey_lattice = np.zeros(L*L, dtype=np.bool_)
+    not_counted_lattice = np.zeros(L*L, dtype=np.bool_)
 
     ## Distribute prey on eligible sites
     prey_sites = np.where(sites==1)[0]
@@ -136,9 +138,6 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
 
     ## Compute list that contains indices (positions) of occupied sites
     occupied_sites = [idx for idx in prey_idxs] + [idx for idx in pred_idxs]
-    ## Generate an empty set for optimisation down the line
-    not_counted = {1}
-    not_counted.remove(1)
     ## Allocate lists needed for individual predator behavior
     gen = range(N0)
     flight_length = [i for i in gen]    # Sampled flight length of individual predators
@@ -146,10 +145,10 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     didx = [0 for i in gen]             # Current direction of individual predators
     current_max_id = N0 + 1
 
-    ## Initialize number of predators and prey
-    N = N0 
-    M = M0 
-    K = N0 + M0
+    ## Initialize
+    N = N0          # Number of predators       
+    M = M0          # Number of prey
+    K = N0 + M0     # Number of occupied sites
 
     ## Allocate arrays for storing measures
     prey_population = np.zeros(nmeasures+1, dtype=np.int64)
@@ -226,7 +225,8 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                         occupied_sites[_k], occupied_sites[-1] = occupied_sites[-1], occupied_sites[_k]
                         del occupied_sites[-1]
                         K -= 1
-                        not_counted.add(idx)
+                        not_counted_lattice[idx] = True 
+                        # not_counted.add(idx)
             ## If the site contains a predator, check in order
             # (i)   die with mortality rate μ
             # (ii)  start a new flight
@@ -288,21 +288,18 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                                 pred_lattice[idx] = 0
                             # If the site was previously not counted due to prey being surrounded
                             # on all sides, we need to re-include these sites and all its neighbors
-                            if new_idx in not_counted:
+                            if not_counted_lattice[new_idx]:
                                 occupied_sites.append(new_idx)
-                                not_counted.remove(new_idx)
+                                not_counted_lattice[new_idx] = False 
                                 K += 1
                                 # Get the neighbors
                                 _neighbors = nb_get_1D_neighbors(new_idx, L)
                                 # Loop through the neighbors
                                 for _idx in _neighbors:
-                                    # Get their neighbors
-                                    __neighbors = nb_get_1D_neighbors(_idx, L)
-                                    for __idx in __neighbors:
-                                        if __idx in not_counted:
-                                            occupied_sites.append(__idx)
-                                            not_counted.remove(__idx)
-                                            K += 1
+                                    if not_counted_lattice[_idx]:
+                                        occupied_sites.append(_idx)
+                                        not_counted_lattice[_idx] = False 
+                                        K += 1
                         else:
                             ## Displace
                             pred_lattice[new_idx] = pred_lattice[idx]

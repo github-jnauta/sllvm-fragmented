@@ -57,10 +57,6 @@ class Args():
             '--T', dest='T', type=int, default=5000, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
-            '--reps', dest='reps', type=int, default=10,
-            help='specify the number of repetitions per resource landscape'
-        )
-        parser.add_argument(
             '--k', dest='nmeasures', type=int, default=100,
             help='specify the number of times population size needs to be measured'
         )
