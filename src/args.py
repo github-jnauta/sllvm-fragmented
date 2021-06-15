@@ -57,7 +57,7 @@ class Args():
             '--T', dest='T', type=int, default=5000, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
-            '--k', dest='nmeasures', type=int, default=100,
+            '--k', dest='nmeasures', type=int, default=25,
             help='specify the number of times population size needs to be measured'
         )
         ## Boolean variables

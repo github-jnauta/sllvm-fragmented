@@ -280,7 +280,8 @@ class Plotter():
         L = 2**args.m 
         _rdir = args.rdir+"sllvm/{L:d}x{L:d}/".format(L=L)
         # Load variable arrays
-        rho_arr = np.loadtxt(_rdir+"rho.txt")[1:]
+        # rho_arr = np.loadtxt(_rdir+"rho.txt")[1:]
+        rho_arr = [0.1, 0.2]
         # lambda_arr = np.loadtxt(_rdir+"lambda.txt")
         lambda_arr = np.logspace(-3,0,30)
         # Initialize figure
@@ -372,13 +373,13 @@ if __name__ == "__main__":
     ## Lattice related plots
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
-    Pjotr.plot_lattice_evolution(args)
+    # Pjotr.plot_lattice_evolution(args)
     # Pjotr.plot_lattice_initial(args)
     # Pjotr.plot_fragmented_lattice(args)
 
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
-    # Pjotr.plot_population_densities(args)
+    Pjotr.plot_population_densities(args)
     # Pjotr.plot_population_phase_space(args)
 
     ## Dynamical system related plots

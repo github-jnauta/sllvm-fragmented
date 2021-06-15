@@ -186,10 +186,10 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
         if M == 0:
             coexistence = 0
             break
-        # predators go extinct, as prey will fully occupy all sites
+        # predators go extinct, as prey will fully occupy all available sites
         if N == 0:
             coexistence = 0
-            prey_population[imeas:] = L**2 
+            prey_population[imeas:] = np.sum(sites)
             break 
         
         # Generate random numbers in bulk
