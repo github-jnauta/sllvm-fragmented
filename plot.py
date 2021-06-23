@@ -50,7 +50,7 @@ class Plotter():
     def plot_fragmented_lattice(self, args):
         _dir = args.ddir+"landscapes/"
         # Load lattice(s)
-        _H = [0, 0.01, 0.05]
+        _H = [0.01, 0.1, 0.99]
         L = 2**args.m
         # Initialize figure
         fig, axes = plt.subplots(1, len(_H), figsize=(3*len(_H), 3), tight_layout=True)
@@ -66,8 +66,8 @@ class Plotter():
             ax.set_yticklabels([r"0", r"L"], fontsize=14)
             ax.xaxis.tick_top()
             ax.text(
-                0.05, 0.9, r"H={:.2f}".format(_H[i]), transform=ax.transAxes,
-                ha='left', fontsize=14, bbox=dict(boxstyle="round", ec='none', fc='white')
+                0.95, 0.9, r"H={:.2f}".format(_H[i]), transform=ax.transAxes,
+                ha='right', fontsize=14, bbox=dict(boxstyle="round", ec='none', fc='white')
             )
         # Store
         self.figdict["example_lattices"] = fig 
@@ -113,6 +113,54 @@ class Plotter():
         # Store
         self.figdict["initial_lattice"] = fig
 
+    def plot_patch_distribution(self, args):
+        """ Plot measurements on the distribution over the patches generated 
+            using fBm for different Hurst exponents H and occupancy levels ρ
+        """
+        # Specify some variables
+        L = 2**args.m
+        # Specify directory
+        _dir = f'data/patch_distribution/{L}x{L}/'
+        # Load variables
+        H_arr = np.loadtxt(_dir+'H.txt')
+        # rho_arr = np.loadtxt(_dir+'rho.txt')
+        # Initialize figure
+        fig, axes = plt.subplots(1,2, figsize=(8,3), tight_layout=True)
+        # Load data & plot
+        # Allocate
+        patch_size = np.zeros((len(H_arr), args.nmeasures))
+        num_patches = np.zeros((len(H_arr), args.nmeasures))
+        # Load data
+        for j, H in enumerate(H_arr):
+            suffix = '_H{:.3f}_rho{:.3f}'.format(H, args.rho)
+            patch_size[j,:] = np.load(_dir+f'patch_size{suffix}.npy')
+            num_patches[j,:] = np.load(_dir+f'num_patches{suffix}.npy')
+        # Plot
+        mean_size = np.mean(patch_size, axis=1)
+        axes[0].semilogy(
+            H_arr, mean_size, color='k', marker='o', mfc='white',
+            markersize=4, label=r'$\rho=%.1f$'%(args.rho)
+        )
+        mean_num = np.mean(num_patches, axis=1)
+        axes[1].semilogy(
+            H_arr, mean_num, color='k', marker='o', mfc='white',
+            markersize=4, label=r'$\rho=%.1f$'%(args.rho)
+        )
+        
+        # Limits, labels, etc
+        labels = [r'mean patch size', r'mean number of patches']
+        for i, ax in enumerate(axes):
+            ax.set_xlim(0, 1)
+            ax.set_xlabel(r'H', fontsize=14)
+            ax.set_ylabel(labels[i], fontsize=14)
+            if i == 0:
+                ax.legend(
+                    loc='upper left', frameon=False, handletextpad=0.2, fontsize=10,
+                    handlelength=1, ncol=2
+                )
+
+
+
 
     ## Animated plots
     def plot_lattice_evolution(self, args):
@@ -120,7 +168,6 @@ class Plotter():
         _dir = args.ddir+"sllvm/{L:d}x{L:d}/".format(L=2**args.m)
         _rdir = "figures/"
         # Set variables
-        _alpha = [args.alpha]
         def get_image(alpha):
             # Load lattice
             suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}_seed{:d}".format(
@@ -153,24 +200,20 @@ class Plotter():
                             im[i,j,t,:] = color_map[lattice[i,j,t]]
             return im 
         # Initialize figure
-        _figlen = max(len(_alpha), 2)
-        fig, axes = plt.subplots(1, _figlen, figsize=(3*_figlen,3), tight_layout=True)
+        fig, ax = plt.subplots(1, 1, figsize=(4,4), tight_layout=True)
         # Plot
-        images = [get_image(alpha) for alpha in _alpha]
-        ims = []
-        for i, alpha in enumerate(_alpha):
-            axes[i].xaxis.tick_top()
+        image = get_image(args.alpha)
+        ax.xaxis.tick_top()
             # axes[i].text(
             #     0.05, 0.9, r"$\alpha={:.2f}$".format(alpha), transform=axes[i].transAxes,
             #     fontsize=14, ha='left', bbox=dict(boxstyle="round", ec='none', fc='white')
             # )
-            ims.append(axes[i].imshow(images[i][:,:,0,:]))
+        im = ax.imshow(image[:,:,0,:])
         
         def update(t):
-            for i, alpha in enumerate(_alpha):
-                lattice_t = images[i][:,:,t,:]
-                ims[i].set_array(lattice_t)
-            return ims 
+            lattice_t = image[:,:,t,:]
+            im.set_array(lattice_t)
+            return im
 
         anim = animation.FuncAnimation(fig, update, interval=25, frames=args.nmeasures+1)
         if not args.save:
@@ -279,62 +322,73 @@ class Plotter():
     def plot_population_densities(self, args):
         L = 2**args.m 
         _rdir = args.rdir+"sllvm/{L:d}x{L:d}/".format(L=L)
+        # Define functions
+        def true_diversity(N, M, q=1):
+            if q == 1:
+                return np.exp(- M * np.ma.log(M).filled(0) - N * np.ma.log(N).filled(0))
+            else:
+                basic_sum = N**q + M**q               
+                return np.ma.power(basic_sum, (1/(1-q))).filled(0)
         # Load variable arrays
-        # rho_arr = np.loadtxt(_rdir+"rho.txt")[1:]
-        rho_arr = [0.1, 0.2]
-        # lambda_arr = np.loadtxt(_rdir+"lambda.txt")
-        lambda_arr = np.logspace(-3,0,30)
+        alpha_arr = np.loadtxt(_rdir+"alpha.txt")[::2]
+        H_arr= np.loadtxt(_rdir+"H.txt")
+        lambda_arr = np.loadtxt(_rdir+"lambda.txt")
         # Initialize figure
         fig, axes = plt.subplots(1, 3, figsize=(12,3), tight_layout=True)
         # Load data
-        for i, ρ in enumerate(rho_arr):
-            suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_sig{:.4f}_a{:.3f}".format(
-                args.T, args.N0, args.M0, args.H, ρ, args.mu, args.sigma, args.alpha
-            )
-            _N = np.load(_rdir+f"N{suffix}.npy") / L**2
-            _M = np.load(_rdir+f"M{suffix}.npy") / (ρ*L**2)
-            N, M = np.mean(_N, axis=1), np.mean(_M, axis=1)
-            # Plot population densities
-            axes[0].semilogx(
-                lambda_arr, N, color=colors[i], marker=markers[i], mfc='white', 
-                markersize=4, label=r"$\rho={:.2f}$".format(ρ)
-            )
-            axes[1].semilogx(
-                lambda_arr, M, color=colors[i], marker=markers[i], mfc='white', 
-                markersize=4, label=r"$M^*$"
-            )
-            # Plot the diversity metric
-            def true_diversity(N, M, q=1):
-                if q == 1:
-                    return np.exp(- M * np.ma.log(M).filled(0) - N * np.ma.log(N).filled(0))
-                else:
-                    basic_sum = N**q + M**q               
-                    return np.ma.power(basic_sum, (1/(1-q))).filled(0)
-            D = true_diversity(N, M, q=1)
-            axes[2].semilogx(
-                lambda_arr, D, color=colors[i], marker=markers[i], mfc='white',
-                markersize=4
-            )
+        # for i, ρ in enumerate(rho_arr):
+        for i, H in enumerate(H_arr):
+            for j, α in enumerate(alpha_arr):
+                suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_sig{:.4f}_a{:.3f}".format(
+                    args.T, args.N0, args.M0, H, args.rho, args.mu, args.sigma, α
+                )
+                _N = np.load(_rdir+f"N{suffix}.npy") / (args.rho*L**2)
+                _M = np.load(_rdir+f"M{suffix}.npy") / (args.rho*L**2)
+                N, M = np.mean(_N, axis=1), np.mean(_M, axis=1)
+                # Plot population densities
+                axes[0].semilogx(
+                    lambda_arr, N, color=colors[i], marker=markers[j], mfc='white', 
+                    markersize=4#, label=r"$\alpha={:.2f}$".format(α)
+                    # , label=r"$\rho={:.2f}$".format(ρ)
+                )
+                axes[1].semilogx(
+                    lambda_arr, M, color=colors[i], marker=markers[j], mfc='white', 
+                    markersize=4, label=r"$M^*$"
+                )
+                # Plot the diversity metric
+                D = true_diversity(N, M, q=1)
+                axes[2].semilogx(
+                    lambda_arr, D, color=colors[i], marker=markers[j], mfc='white',
+                    markersize=4
+                )
         # Limits, labels, etc
-        # lines = lineN + lineM 
+        Hlines = [Line2D([0],[0], linestyle='-', color=colors[i]) for i in range(len(H_arr))]
+        Hlabels = [r"$H=%.1f$"%(H) for H in H_arr]
+        alines = [
+            Line2D(
+                    [0],[0], color='k', marker=markers[j], mfc='white', linestyle='none',
+                    markersize=4
+                ) 
+            for j in range(len(alpha_arr))]
+        alabels = [r"$\alpha=%.2f$"%(α) for α in alpha_arr]        
         # labels = [line.get_label() for line in lines]
         for i, ax in enumerate(axes):
             ax.set_xlim(min(lambda_arr), max(lambda_arr))
             if i == 0:
                 ax.set_ylim(bottom=0)
-                ax.set_ylabel(r"predator density $N^*$", fontsize=14)
-                # ax.legend(lines, labels, fontsize=13, loc='upper right', frameon=False)
-                ax.legend(
-                    loc='upper left', fontsize=13, frameon=False, handletextpad=0.25,
-                    borderaxespad=0.1
-                )
+                ax.set_ylabel(r"predator density $N^*$", fontsize=14)                                
             elif i == 1:
                 ax.set_ylim(0, 1)
                 ax.set_ylabel(r"prey density $M^*$", fontsize=14)
+                Hlegend = ax.legend(Hlines, Hlabels, loc='lower left')
+                alegend = ax.legend(alines, alabels, loc='upper right')
+                ax.add_artist(Hlegend)
             else:
                 ax.set_ylim(bottom=1)
                 ax.set_ylabel(r"true diversity $^1D$", fontsize=14)
             ax.set_xlabel(r"$\lambda$", fontsize=14)
+        # Save
+        self.figdict["population_densities"] = fig 
         
 
     ###########################
@@ -376,10 +430,11 @@ if __name__ == "__main__":
     # Pjotr.plot_lattice_evolution(args)
     # Pjotr.plot_lattice_initial(args)
     # Pjotr.plot_fragmented_lattice(args)
+    Pjotr.plot_patch_distribution(args)
 
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
-    Pjotr.plot_population_densities(args)
+    # Pjotr.plot_population_densities(args)
     # Pjotr.plot_population_phase_space(args)
 
     ## Dynamical system related plots
