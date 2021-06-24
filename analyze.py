@@ -33,8 +33,8 @@ class Analyzer():
                 )
                 _N = np.load(_dir+"pred_population{suffix:s}.npy".format(suffix=suffix))
                 _M = np.load(_dir+"prey_population{suffix:s}.npy".format(suffix=suffix))
-                N[i,j] = np.mean(_N[:-5])
-                M[i,j] = np.mean(_M[:-5])
+                N[i,j] = np.mean(_N[-5:])
+                M[i,j] = np.mean(_M[-5:])
         # Save
         save_suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_sig{:.4f}_a{:.3f}".format(
             args.T, args.N0, args.M0, args.H, args.rho, 

@@ -56,13 +56,16 @@ fi
 
 ## DEFINE variables and sequences
 #  Additionally store these variables in files for later use (e.g. analysis, plotting)
-seeds=$(seq 51 1 100)
+seeds=$(seq 1 1 $NSEEDS)
 alpha=(1.1 1.5 2.0 2.5 3.0)
-rho=(0.1 0.2)
-python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,np.log10(0.2),25), fmt="%.4e")'
+rho=(0.05 0.1)
+H=(0.1 0.5 0.9)
+python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,0,30), fmt="%.4e")'
 mkdir -p $DATADIR
 echo "${seeds[@]}" > $DATADIR/seeds.txt
-# echo "${lambda[@]}" > $DATADIR/lambda.txt
+echo "${alpha[@]}" > $DATADIR/alpha.txt
+ecjp "${rho[@]}" > $DATADIR/rho.txt
+echo "${H[@]}" > $DATADIR/H.txt
 mapfile -t lambda < lambda.txt; mv lambda.txt $DATADIR
 
 if [ $SSH ]; then 
@@ -71,8 +74,8 @@ if [ $SSH ]; then
 	echo "Executing code, #seeds $NSEEDS"
         parallel -S $nodes_string --sshdelay 0.1 --delay 0.1 "
         cd {1};
-        python run_system.py --lambda {2} --seed {3};
-        " ::: $CODEDIR ::: ${lambda[@]} ::: ${seeds[@]}
+        python run_system.py --alpha {2} --H {3} --lambda {4} --seed {5} --rho {6};
+        " ::: $CODEDIR ::: ${alpha[@]} ::: ${H[@]} ::: ${lambda[@]} ::: ${seeds[@]} ::: ${rho[@]}
     fi 
     ## RETRIEVE data 
     if $GETDATA; then 
