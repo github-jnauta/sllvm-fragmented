@@ -20,7 +20,7 @@ class Args():
             '--H', dest='H', type=float, default=0.9, help='Hurst exponent'
         )
         parser.add_argument(
-            '--rho', dest='rho', type=float, default=0.05, help='level of occupancy'
+            '--rho', dest='rho', type=float, default=0.2, help='level of occupancy'
         )
         parser.add_argument(
             '--M0', dest='M0', type=int, default=-1, 
@@ -42,7 +42,11 @@ class Args():
         )
         parser.add_argument(
             '--lambda', dest='lambda_', type=float, default=0.01,
-            help='specify predator reproduction rate'
+            help='specify predator reproduction rate λ'
+        )
+        parser.add_argument(
+            '--Lambda', dest='Lambda_', type=float, default=0.1,
+            help='specify predator-prey interaction rate Λ'
         )
         parser.add_argument(
             '--N0', dest='N0', type=int, default=-1,
@@ -50,14 +54,14 @@ class Args():
         )
         ## Random number variables
         parser.add_argument(
-            '--seed', dest='seed', type=int, default=42
+            '--seed', dest='seed', type=int, default=1
         )
         ## Numerical variables
         parser.add_argument(
             '--T', dest='T', type=int, default=5000, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
-            '--k', dest='nmeasures', type=int, default=25,
+            '--k', dest='nmeasures', type=int, default=100,
             help='specify the number of times population size needs to be measured'
         )
         ## Boolean variables

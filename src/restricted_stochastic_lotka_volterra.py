@@ -67,7 +67,7 @@ def nb_get_1D_neighbors(idx, L):
 
 # @profile
 @numba.jit(nopython=True, cache=True)
-def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
+def nb_SLLVM(T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, nmeasures):
     """ Runs the stochastic lattice Lotka-Volterra model
         While the lattice is a 2D (square) lattice, we first convert everyting to a 
         1D lattice, where neighbors and periodic boundary conditions properly need to 
@@ -97,7 +97,10 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
         mu : np.float64
             Mortality rate of the predators (foragers)
         lambda_ : np.float64
-            Reproduction rate of the predators
+            Reproduction rate of the predators, note that prey consumption rate is then
+            defined by 1-lambda_
+        Lambda_ : np.float64
+            Predator-prey interaction rate
         sigma : np.float64
             Reproduction rate of the prey (resources)
         alpha : np.float64
@@ -106,10 +109,12 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             Number of times populations are measures at equally spaced intervals
     """
     # Specify some variables
-    L, _ = sites.shape
-    dmeas = T // nmeasures
+    L, _ = sites.shape              # Size of LxL lattice
+    dmeas = T // nmeasures          # Δt at which measurements need to be collected
+    _nn = 4                         # Number of nearest neighbors
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
+
     N0 = L**2 // 10 if N0 == -1 else N0         # Initial number of predators
     alpha = np.inf if alpha == -1 else alpha    # Levy parameter
 
@@ -163,12 +168,12 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     prey_population = np.zeros(nmeasures+1, dtype=np.int64)
     pred_population = np.zeros(nmeasures+1, dtype=np.int64)
     coexistence = 1
-    # lattice_configuration = np.zeros((L*L, nmeasures+1), dtype=np.int64)    
+    lattice_configuration = np.zeros((L*L, nmeasures+1), dtype=np.int64)    
     # Store initial values
     prey_population[0] = M0 
     pred_population[0] = N0 
-    # lattice_configuration[prey_lattice,0] = -1 
-    # lattice_configuration[pred_lattice>0,0] = 1
+    lattice_configuration[prey_lattice,0] = -1 
+    lattice_configuration[pred_lattice>0,0] = 1
 
     ##############################################
     ## Run the stochastic Lotka-Volterra system ##
@@ -178,8 +183,8 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             imeas = t // dmeas
             prey_population[imeas] = M 
             pred_population[imeas] = N
-            # lattice_configuration[prey_lattice,imeas] = -1 
-            # lattice_configuration[pred_lattice>0,imeas] = 1
+            lattice_configuration[prey_lattice,imeas] = -1 
+            lattice_configuration[pred_lattice>0,imeas] = 1
 
         ## Stop the simulation if:
         # prey goes extinct, as predators will also go extinct
@@ -202,10 +207,19 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
             _k = np.int64(K*randoms[tau])
             idx = occupied_sites[_k]
             neighbors = nb_get_1D_neighbors(idx, L)
-            ## If the site contains prey, reproduce with probability (rate) σ
-            # (NOTE: Prey only reproduces if it has an empty neighboring site, where empty
-            #  means both eligible and no prey or predator on the site)
-            if prey_lattice[idx]:
+            ## If the site contains both predator and prey, simply pick one
+            if prey_lattice[idx] and pred_lattice[idx]:
+                _is_prey = np.random.random() < 0.5 
+            elif prey_lattice[idx]:
+                _is_prey = True 
+            else:
+                _is_prey = False 
+
+            if _is_prey:
+                ## If the site contains prey, choose a random neighboring site, and if its
+                #  empty, reproduce with probability (rate) σ
+                # (NOTE: empty means both eligible and no prey or predator on the site)
+
                 # Check if neighboring sites are empty
                 empty_sites = np.logical_and(
                     sites[neighbors], np.logical_and(~prey_lattice[neighbors], pred_lattice[neighbors]==0)
@@ -214,10 +228,12 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                 _nempty = len(empty_neighbors)
                 ## If there are empty neighboring sites, reproduce with rate σ
                 if _nempty > 0:
-                    # Randomly sample one of the eligible neighboring sites
-                    neighbor = empty_neighbors[np.int64(_nempty*randoms[tau])]
-                    # Place prey there with probability σ
-                    if np.random.random() < sigma:
+                    # Randomly sample one neighboring sites
+                    neighbor = neighbors[np.int64(_nn*randoms[tau])]
+                    # empty_neighbors[np.int64(_nempty*randoms[tau])]
+                    _is_empty = empty_sites[neighbor]
+                    # If empty, place prey there with probability σ
+                    if _is_empty and np.random.random() < sigma:
                         prey_lattice[neighbor] = True       # Place prey on prey lattice
                         occupied_sites.append(neighbor)     # Append occupied site to the list
                         M += 1
@@ -234,14 +250,14 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                         occupied_sites[_k], occupied_sites[-1] = occupied_sites[-1], occupied_sites[_k]
                         del occupied_sites[-1]
                         K -= 1
-                        not_counted_lattice[idx] = True 
-                        # not_counted.add(idx)
-            ## If the site contains a predator, check in order
-            # (i)   die with mortality rate μ
-            # (ii)  start a new flight
-            # (iii) continue the current flight
-            # (iv)  consume prey and reproduce
-            elif pred_lattice[idx] > 0:
+                        not_counted_lattice[idx] = True
+            else:
+                ## If the site contains a predator, check in order
+                # (i)   die with mortality rate μ
+                # (ii)  start a new flight
+                # (iii) continue the current flight
+                # (iv)  interact with pray, to possibly consume and/or reproduce
+
                 ## Get predator ID from the predator lattice
                 _pred_id = pred_lattice[idx] - 1
                 ## (i) die with mortality rate μ
@@ -273,28 +289,61 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                         if curr_length[_pred_id] > flight_length[_pred_id]:
                             curr_length[_pred_id] = 0 
 
-                        ## (iv) consume prey and reproduce
+                        ## (iv) interact with prey        
                         if prey_lattice[new_idx]:
-                            prey_lattice[new_idx] = False   # Remove prey from that site
-                            curr_length[_pred_id] = 0       # Truncate current flight
-                            M -= 1
-                            
-                            ## Reproduce onto the site with rate λ
-                            if np.random.random() < lambda_:
-                                pred_lattice[new_idx] = current_max_id
-                                flight_length.append(0)
-                                curr_length.append(0)
+                            _r = np.random.random()
+                            ## (iv)(a) do not interact with prey with probability 1-Λ
+                            if _r < 1 - Lambda_:                                
+                                # Update predator lattice
+                                pred_lattice[new_idx] = pred_lattice[idx]
+                                pred_lattice[idx] = 0 
+                                occupied_sites[_k] = new_idx
+                            ## (iv)(b) reproduce onto the prey site with probability Λ*λ 
+                            elif _r <  Lambda_*lambda_:
+                                # Append new predator to appropriate lists
+                                flight_length.append(0)         # Reset its flight length
+                                curr_length.append(0) 
                                 didx.append(0)
+                                # Update predator lattice
+                                pred_lattice[new_idx] = current_max_id
                                 current_max_id += 1
                                 N += 1
+                                # Update prey lattice
+                                prey_lattice[new_idx] = False   # Remove prey from that site
+                                curr_length[_pred_id] = 0       # Truncate current flight
+                                M -= 1
+                            ## (iv)(c) consume (replace) prey with probability Λ*(1-λ)
                             else:
                                 # Remove the site previously occupied by the predator
                                 occupied_sites[_k], occupied_sites[-1] = occupied_sites[-1], occupied_sites[_k]
                                 del occupied_sites[-1]
                                 K -= 1
-                                # Update the predator lattice 
+                                # Update predator lattice 
                                 pred_lattice[new_idx] = pred_lattice[idx]
                                 pred_lattice[idx] = 0
+                                # Update prey lattice
+                                prey_lattice[new_idx] = False   # Remove prey from that site
+                                curr_length[_pred_id] = 0       # Truncate current flight
+                                M -= 1
+                                
+                                # ## (iv)(b) Reproduce onto the site with rate λ
+                                # if np.random.random() < lambda_:
+                                #     pred_lattice[new_idx] = current_max_id
+                                #     flight_length.append(0)
+                                #     curr_length.append(0)
+                                #     didx.append(0)
+                                #     current_max_id += 1
+                                #     N += 1
+                                # ## (iv)(c) Consume the predator and take its place with 1-λ
+                                # else:
+                                #     # Remove the site previously occupied by the predator
+                                #     occupied_sites[_k], occupied_sites[-1] = occupied_sites[-1], occupied_sites[_k]
+                                #     del occupied_sites[-1]
+                                #     K -= 1
+                                #     # Update the predator lattice 
+                                #     pred_lattice[new_idx] = pred_lattice[idx]
+                                #     pred_lattice[idx] = 0
+                                
                             # If the site was previously not counted due to prey being surrounded
                             # on all sides, we need to re-include these sites and all its neighbors
                             if not_counted_lattice[new_idx]:
@@ -309,24 +358,27 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
                                         occupied_sites.append(_idx)
                                         not_counted_lattice[_idx] = False 
                                         K += 1
+                            else:
+                                pass
                         else:
                             ## Displace
                             pred_lattice[new_idx] = pred_lattice[idx]
                             pred_lattice[idx] = 0 
                             occupied_sites[_k] = new_idx
-    return prey_population, pred_population, coexistence
+    
+    return prey_population, pred_population, coexistence, lattice_configuration
 
 #################################
 # Wrapper for the numba modules #
 class SLLVM(object):
     """ Class for the Stochastic Lattice Lotka-Volterra Model """
-    def __init__(self) -> None: 
-        self.Lattice = src.lattice.Lattice()
+    def __init__(self, seed) -> None: 
+        self.Lattice = src.lattice.Lattice(seed)
+        # Fix the RNG
+        np.random.seed(seed)
+        nb_set_seed(seed)
 
     def run_system(self, args):
-        # Fix the RNG
-        np.random.seed(args.seed)
-        nb_set_seed(args.seed)
         # Compute the prey (resource) sites on the L x L lattice
         if args.rho == 1:
             sites = np.ones((2**args.m, 2**args.m), dtype=np.int64)
@@ -338,15 +390,15 @@ class SLLVM(object):
         # Run 
         output = nb_SLLVM(
             args.T, args.N0, args.M0, sites, 
-            args.mu, args.lambda_, args.sigma, args.alpha,
+            args.mu, args.lambda_, args.Lambda_, args.sigma, args.alpha,
             args.nmeasures
         )
         # Save
         outdict['prey_population'] = output[0]
         outdict['pred_population'] = output[1]
         outdict['coexistence'] = output[2]
-        # outdict['sites'] = sites 
-        # outdict['lattice'] = output[3]
+        outdict['sites'] = sites 
+        outdict['lattice'] = output[3]
         return outdict
 
     

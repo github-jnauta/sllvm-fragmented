@@ -51,7 +51,7 @@ class Analyzer():
                 sigma=args.sigma, seed=args.seed
             )
         )
-        print("Computed quasistationary population densities for %s"%(printstr))
+        print("Computed quasistationary population densities for \n %s"%(printstr))
     
 
 if __name__ == "__main__":
