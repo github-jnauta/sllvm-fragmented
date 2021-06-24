@@ -151,6 +151,7 @@ class Plotter():
         labels = [r'mean patch size', r'mean number of patches']
         for i, ax in enumerate(axes):
             ax.set_xlim(0, 1)
+            ax.set_ylim(bottom=1)
             ax.set_xlabel(r'H', fontsize=14)
             ax.set_ylabel(labels[i], fontsize=14)
             if i == 0:
@@ -427,10 +428,10 @@ if __name__ == "__main__":
     ## Lattice related plots
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
-    Pjotr.plot_lattice_evolution(args)
+    # Pjotr.plot_lattice_evolution(args)
     # Pjotr.plot_lattice_initial(args)
     # Pjotr.plot_fragmented_lattice(args)
-    # Pjotr.plot_patch_distribution(args)
+    Pjotr.plot_patch_distribution(args)
 
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
