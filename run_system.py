@@ -36,10 +36,10 @@ if __name__ == "__main__":
     # Print some closing statements
     printstr = (
         '{L}x{L} lattice, H={H:.3f}, \u03C1={rho:.3f}, T={T:d}, \u03B1={alpha:.3f},' 
-        '\u03BC={mu:.4f}, \u03BB={lambda_:.4f}, \u03C3={sigma:.4f}, seed {seed:d}'.format(
+        '\u03BC={mu:.4f}, \u03BB={lambda_:.4f}, \u039B\u03C3={sigma:.4f}, seed {seed:d}'.format(
             L=2**args.m, H=args.H, rho=args.rho, T=args.T,
-            alpha=args.alpha, mu=args.mu, lambda_=args.lambda_, sigma=args.sigma, 
-            seed=args.seed
+            alpha=args.alpha, mu=args.mu, lambda_=args.lambda_, 
+            sigma=args.sigma, seed=args.seed
         )
     )
     seconds = time.time() - starttime

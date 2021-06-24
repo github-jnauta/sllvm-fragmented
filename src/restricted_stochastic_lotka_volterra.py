@@ -55,6 +55,16 @@ def nb_truncated_zipf(alpha, N):
     return cdf
 
 @numba.jit(nopython=True, cache=True)
+def nb_sample_powlaw_discrete(alpha, C, xmin=1):
+    """ Generate discrete sample from the (truncated) powerlaw distribution
+        with normalization C (see https://www.jstor.org/stable/pdf/25662336.pdf)
+    """
+    _xmin = xmin - 0.5 
+    _sample = (_xmin**(1-alpha) + np.random.random()/C)**(1/(1-alpha))
+    _sample = np.floor(_sample)
+    return np.int64(_sample)
+
+@numba.jit(nopython=True, cache=True)
 def nb_get_1D_neighbors(idx, L):
     """ Get the 1D neighbors of a specific index, abiding periodic boundary conditions
         on the (original) 2D lattice
@@ -67,7 +77,7 @@ def nb_get_1D_neighbors(idx, L):
 
 # @profile
 @numba.jit(nopython=True, cache=True)
-def nb_SLLVM(T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, nmeasures):
+def nb_SLLVM(T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, nmeasures, xmin=1):
     """ Runs the stochastic lattice Lotka-Volterra model
         While the lattice is a 2D (square) lattice, we first convert everyting to a 
         1D lattice, where neighbors and periodic boundary conditions properly need to 
@@ -112,6 +122,8 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, nmeasures):
     L, _ = sites.shape              # Size of LxL lattice
     dmeas = T // nmeasures          # Δt at which measurements need to be collected
     _nn = 4                         # Number of nearest neighbors
+    # Compute normalization constant for Levy walks
+    C = -1 / ((xmin-0.5)**(1-alpha) - L**(1-alpha))
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
 
@@ -226,14 +238,16 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, nmeasures):
                 )
                 empty_neighbors = neighbors[empty_sites]
                 _nempty = len(empty_neighbors)
-                ## If there are empty neighboring sites, reproduce with rate σ
+                
                 if _nempty > 0:
+                    ## Reproduction only possible if there are empty neighboring sites
                     # Randomly sample one neighboring sites
-                    neighbor = neighbors[np.int64(_nn*randoms[tau])]
-                    # empty_neighbors[np.int64(_nempty*randoms[tau])]
-                    _is_empty = empty_sites[neighbor]
+                    _nidx = np.int64(_nn*np.random.random())
+                    neighbor = neighbors[_nidx]
+                    _is_empty = empty_sites[_nidx]
                     # If empty, place prey there with probability σ
-                    if _is_empty and np.random.random() < sigma:
+                    if _is_empty and  np.random.random() < sigma :
+                        # print(t, 'placing prey')
                         prey_lattice[neighbor] = True       # Place prey on prey lattice
                         occupied_sites.append(neighbor)     # Append occupied site to the list
                         M += 1
@@ -246,7 +260,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, nmeasures):
                         np.logical_and(sites[empty_neighbors], ~prey_lattice[empty_neighbors])
                     ]
                     _neligible = len(eligible_neighbors)
-                    if _neligible == 0:
+                    if _neligible == 0 and pred_lattice[idx] == 0:
                         occupied_sites[_k], occupied_sites[-1] = occupied_sites[-1], occupied_sites[_k]
                         del occupied_sites[-1]
                         K -= 1
@@ -270,7 +284,8 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, nmeasures):
                 else:
                     ## (ii) start a new flight
                     if curr_length[_pred_id] == 0:
-                        flight_length[_pred_id] = nb_sample_cdf(_cdf)
+                        # flight_length[_pred_id] = nb_sample_cdf(_cdf)
+                        flight_length[_pred_id] = nb_sample_powlaw_discrete(alpha, C)
                         didx[_pred_id] = np.random.randint(0,4)
                     
                     ## (iii) continue the current (or just started) flight
@@ -325,7 +340,6 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, nmeasures):
                                 prey_lattice[new_idx] = False   # Remove prey from that site
                                 curr_length[_pred_id] = 0       # Truncate current flight
                                 M -= 1
-                                
                                 # ## (iv)(b) Reproduce onto the site with rate λ
                                 # if np.random.random() < lambda_:
                                 #     pred_lattice[new_idx] = current_max_id
@@ -358,8 +372,6 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, nmeasures):
                                         occupied_sites.append(_idx)
                                         not_counted_lattice[_idx] = False 
                                         K += 1
-                            else:
-                                pass
                         else:
                             ## Displace
                             pred_lattice[new_idx] = pred_lattice[idx]

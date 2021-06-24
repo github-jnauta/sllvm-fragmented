@@ -192,8 +192,8 @@ class Plotter():
             # Generate the image to be shown with correct colormap
             lattice[lattice>=1] = 2
             im = np.ndarray(shape=(L,L,args.nmeasures+1,3), dtype=np.int64)
-            for i in range(0,L):
-                for j in range(0,L):
+            for i in range(L):
+                for j in range(L):
                     im[i,j,:,:] = color_map[sites[i,j]]
                     for t in range(args.nmeasures+1):
                         if lattice[i,j,t]:
@@ -427,10 +427,10 @@ if __name__ == "__main__":
     ## Lattice related plots
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
-    # Pjotr.plot_lattice_evolution(args)
+    Pjotr.plot_lattice_evolution(args)
     # Pjotr.plot_lattice_initial(args)
     # Pjotr.plot_fragmented_lattice(args)
-    Pjotr.plot_patch_distribution(args)
+    # Pjotr.plot_patch_distribution(args)
 
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
