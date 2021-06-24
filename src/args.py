@@ -20,7 +20,7 @@ class Args():
             '--H', dest='H', type=float, default=0.9, help='Hurst exponent'
         )
         parser.add_argument(
-            '--rho', dest='rho', type=float, default=0.2, help='level of occupancy'
+            '--rho', dest='rho', type=float, default=0.1, help='level of occupancy'
         )
         parser.add_argument(
             '--M0', dest='M0', type=int, default=-1, 
