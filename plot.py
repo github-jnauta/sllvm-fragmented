@@ -170,8 +170,12 @@ class Plotter():
         # Set variables
         def get_image(alpha):
             # Load lattice
-            suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}_seed{:d}".format(
-                args.T, args.N0, args.M0, args.H, args.rho, args.mu, args.lambda_, args.sigma, alpha, args.seed
+            suffix = (
+                '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_'
+                'Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}_seed{:d}'.format(
+                    args.T, args.N0, args.M0, args.H, args.rho, args.mu, 
+                    args.Lambda_, args.lambda_, args.sigma, alpha, args.seed
+                )
             )
             lattice = np.load(_dir+"lattice{suffix:s}.npy".format(suffix=suffix))
             # pred_population = np.load(_dir+"pred_population{suffix:s}.npy".format(suffix=suffix))
@@ -204,10 +208,6 @@ class Plotter():
         # Plot
         image = get_image(args.alpha)
         ax.xaxis.tick_top()
-            # axes[i].text(
-            #     0.05, 0.9, r"$\alpha={:.2f}$".format(alpha), transform=axes[i].transAxes,
-            #     fontsize=14, ha='left', bbox=dict(boxstyle="round", ec='none', fc='white')
-            # )
         im = ax.imshow(image[:,:,0,:])
         
         def update(t):
@@ -226,8 +226,8 @@ class Plotter():
                 _rdir+"gifs/lattice_animation{suffix:s}.gif".format(suffix=suffix),
                 writer='imagemagick', fps=10
             )
-# lattice_T500_N128_M-1_H0.900_rho0.050_mu0.0000_lambda0.0000_sig0.1000_a3.000_seed42.npy
-# lattice_T500_N128_M-1_H0.900_rho0.050_mu0.0000_lambda0.0000_sig0.1000_a3.000_seed42.npy
+
+
     ## Static plots
     def plot_lattice(self, args):
         # Specify directory
