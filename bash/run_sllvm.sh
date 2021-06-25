@@ -59,12 +59,12 @@ fi
 seeds=$(seq 1 1 $NSEEDS)
 alpha=(1.1 2.0 3.0)
 H=$(seq 0.1 0.1 0.9)
-python -c 'import numpy as np; np.savetxt("Lambda.txt", np.logspace(-3,0,20), fmt="%.4e")'
+python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,0,25), fmt="%.4e")'
 mkdir -p $DATADIR
 echo "${seeds[@]}" > $DATADIR/seeds.txt
 echo "${alpha[@]}" > $DATADIR/alpha.txt
 echo "${H[@]}" > $DATADIR/H.txt
-mapfile -t Lambda < Lambda.txt; mv Lambda.txt $DATADIR
+mapfile -t lambda < lambda.txt; mv lambda.txt $DATADIR
 
 if [ $SSH ]; then 
     ## EXECUTE Python script in parallel on all available CPU threads
@@ -72,8 +72,8 @@ if [ $SSH ]; then
 	echo "Executing code, #seeds $NSEEDS"
         parallel -S $nodes_string --sshdelay 0.1 --delay 0.1 "
         cd {1};
-        python run_system.py --alpha {2} --H {3} --Lambda {4} --seed {5};
-        " ::: $CODEDIR ::: ${alpha[@]} ::: ${H[@]} ::: ${Lambda[@]} ::: ${seeds[@]}
+        python run_system.py --alpha {2} --H {3} --lambda {4} --seed {5};
+        " ::: $CODEDIR ::: ${alpha[@]} ::: ${H[@]} ::: ${lambda[@]} ::: ${seeds[@]}
     fi 
     ## RETRIEVE data 
     if $GETDATA; then 
