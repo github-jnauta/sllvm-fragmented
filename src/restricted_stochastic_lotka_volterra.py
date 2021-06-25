@@ -77,7 +77,10 @@ def nb_get_1D_neighbors(idx, L):
 
 # @profile
 @numba.jit(nopython=True, cache=True)
-def nb_SLLVM(T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, nmeasures, xmin=1):
+def nb_SLLVM(
+        T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, nmeasures, 
+        visualize, xmin=1
+    ):
     """ Runs the stochastic lattice Lotka-Volterra model
         While the lattice is a 2D (square) lattice, we first convert everyting to a 
         1D lattice, where neighbors and periodic boundary conditions properly need to 
@@ -117,6 +120,10 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, nmeasures, xm
             Levy walk parameter of the predators' movement
         nmeasures : np.int64
             Number of times populations are measures at equally spaced intervals
+        xmin : np.int64
+            Minimum predator displacement. Default set to 1 as the lattice size.
+        visualize : np.bool_
+            Boolean flag that includes lattice configuration over time in return
     """
     # Specify some variables
     L, _ = sites.shape              # Size of LxL lattice
@@ -179,13 +186,15 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, nmeasures, xm
     ## Allocate arrays for storing measures
     prey_population = np.zeros(nmeasures+1, dtype=np.int64)
     pred_population = np.zeros(nmeasures+1, dtype=np.int64)
-    coexistence = 1
-    lattice_configuration = np.zeros((L*L, nmeasures+1), dtype=np.int64)    
+    coexistence = 1  
     # Store initial values
     prey_population[0] = M0 
     pred_population[0] = N0 
-    lattice_configuration[prey_lattice,0] = -1 
-    lattice_configuration[pred_lattice>0,0] = 1
+    # Allocate and initialice lattice configuration if visualize flag is given
+    lattice_configuration = np.zeros((L*L, nmeasures+1), dtype=np.int16)
+    if visualize:
+        lattice_configuration[prey_lattice,0] = -1 
+        lattice_configuration[pred_lattice>0,0] = 1
 
     ##############################################
     ## Run the stochastic Lotka-Volterra system ##
@@ -195,8 +204,9 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, nmeasures, xm
             imeas = t // dmeas
             prey_population[imeas] = M 
             pred_population[imeas] = N
-            lattice_configuration[prey_lattice,imeas] = -1 
-            lattice_configuration[pred_lattice>0,imeas] = 1
+            if visualize:
+                lattice_configuration[prey_lattice,imeas] = -1 
+                lattice_configuration[pred_lattice>0,imeas] = 1
 
         ## Stop the simulation if:
         # prey goes extinct, as predators will also go extinct
@@ -403,14 +413,15 @@ class SLLVM(object):
         output = nb_SLLVM(
             args.T, args.N0, args.M0, sites, 
             args.mu, args.lambda_, args.Lambda_, args.sigma, args.alpha,
-            args.nmeasures
+            args.nmeasures, args.visualize
         )
         # Save
         outdict['prey_population'] = output[0]
         outdict['pred_population'] = output[1]
         outdict['coexistence'] = output[2]
-        outdict['sites'] = sites 
-        outdict['lattice'] = output[3]
+        if args.visualize:
+            outdict['sites'] = sites 
+            outdict['lattice'] = output[3]
         return outdict
 
     

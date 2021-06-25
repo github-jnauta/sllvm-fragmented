@@ -27,18 +27,24 @@ class Analyzer():
         M = np.zeros((len(lambda_arr), len(seeds)))
         for i, lambda_ in enumerate(lambda_arr):
             for j, seed in enumerate(seeds):
-                suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}_seed{:d}".format(
-                    args.T, args.N0, args.M0, args.H, args.rho, 
-                    args.mu, lambda_, args.sigma, args.alpha, seed
+                suffix = (
+                    '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}'
+                    '_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}_seed{:d}'.format(
+                        args.T, args.N0, args.M0, args.H, args.rho, args.mu,
+                        args.Lambda, lambda_, args.sigma, args.alpha, seed
+                    )
                 )
                 _N = np.load(_dir+"pred_population{suffix:s}.npy".format(suffix=suffix))
                 _M = np.load(_dir+"prey_population{suffix:s}.npy".format(suffix=suffix))
-                N[i,j] = np.mean(_N[-5:])
-                M[i,j] = np.mean(_M[-5:])
+                N[i,j] = np.mean(_N[-25:])
+                M[i,j] = np.mean(_M[-25:])
         # Save
-        save_suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_sig{:.4f}_a{:.3f}".format(
-            args.T, args.N0, args.M0, args.H, args.rho, 
-            args.mu, args.sigma, args.alpha
+        save_suffix = (
+            '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_'
+            'mu{:.4f}_Lambda{:.4f}_sig{:.4f}_a{:.3f}'.format(
+                args.T, args.N0, args.M0, args.H, args.rho, 
+                args.mu, args.Lambda_, args.sigma, args.alpha
+            )
         )
         np.save(_rdir+"N{suffix:s}".format(suffix=save_suffix), N)
         np.save(_rdir+"M{suffix:s}".format(suffix=save_suffix), M)
