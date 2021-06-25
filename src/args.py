@@ -41,11 +41,11 @@ class Args():
             help='specify predator mortality rate'
         )
         parser.add_argument(
-            '--lambda', dest='lambda_', type=float, default=0.01,
+            '--lambda', dest='lambda_', type=float, default=0.1,
             help='specify predator reproduction rate λ'
         )
         parser.add_argument(
-            '--Lambda', dest='Lambda_', type=float, default=0.1,
+            '--Lambda', dest='Lambda_', type=float, default=1,
             help='specify predator-prey interaction rate Λ'
         )
         parser.add_argument(
@@ -72,6 +72,10 @@ class Args():
         parser.add_argument(
             '--no-save', dest='nosave', action='store_true',
             help='if included, explicitly does not save data/figure(s)'
+        )
+        parser.add_argument(
+            '--visualize', dest='visualize', action='store_true', 
+            help='if included, stores raw data over time visualization'
         )
         parser.add_argument(
             '--compute', dest='compute', action='store_true', 
