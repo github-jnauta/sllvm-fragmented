@@ -39,9 +39,12 @@ class Analyzer():
                 N[i,j] = np.mean(_N[-25:])
                 M[i,j] = np.mean(_M[-25:])
         # Save
-        save_suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_sig{:.4f}_a{:.3f}".format(
-            args.T, args.N0, args.M0, args.H, args.rho, 
-            args.mu, args.sigma, args.alpha
+        save_suffix = (
+            '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_'
+            'mu{:.4f}_Lambda{:.4f}_sig{:.4f}_a{:.3f}'.format(
+                args.T, args.N0, args.M0, args.H, args.rho, 
+                args.mu, args.Lambda_, args.sigma, args.alpha
+            )
         )
         np.save(_rdir+"N{suffix:s}".format(suffix=save_suffix), N)
         np.save(_rdir+"M{suffix:s}".format(suffix=save_suffix), M)
