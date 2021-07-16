@@ -110,6 +110,7 @@ def nb_SLLVM(T, N0, M0, sites, mu, lambda_, sigma, alpha, nmeasures):
     lattice = np.zeros(L*L, dtype=np.int64)
     # Initialize predators on sites not eligible for prey    
     predator_sites = np.where(sites==0)[0]
+    N0 = L**2 // 5 if N0 == -1 else N0
     predator_idxs = np.random.choice(predator_sites, size=N0, replace=False)
     for i in predator_idxs:
         lattice[i] = 1
