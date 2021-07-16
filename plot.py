@@ -123,7 +123,7 @@ class Plotter():
         _dir = f'data/patch_distribution/{L}x{L}/'
         # Load variables
         H_arr = np.loadtxt(_dir+'H.txt')
-        # rho_arr = np.loadtxt(_dir+'rho.txt')
+        rho_arr = np.loadtxt(_dir+'rho.txt')[:1]
         # Initialize figure
         fig, axes = plt.subplots(1,2, figsize=(7,3.5/4*3), tight_layout=True)
         # Load data & plot
@@ -131,21 +131,22 @@ class Plotter():
         patch_size = np.zeros((len(H_arr), args.nmeasures))
         num_patches = np.zeros((len(H_arr), args.nmeasures))
         # Load data
-        for j, H in enumerate(H_arr):
-            suffix = '_H{:.3f}_rho{:.3f}'.format(H, args.rho)
-            patch_size[j,:] = np.load(_dir+f'patch_size{suffix}.npy')
-            num_patches[j,:] = np.load(_dir+f'num_patches{suffix}.npy')
-        # Plot
-        mean_size = np.mean(patch_size, axis=1) / L**2
-        axes[0].plot(
-            H_arr, mean_size, color='k', marker='o', mfc='white',
-            markersize=4, label=r'$\rho=%.1f$'%(args.rho)
-        )
-        mean_num = np.mean(num_patches, axis=1)
-        axes[1].plot(
-            H_arr, mean_num, color='k', marker='o', mfc='white',
-            markersize=4, label=r'$\rho=%.1f$'%(args.rho)
-        )
+        for i, rho in enumerate(rho_arr):
+            for j, H in enumerate(H_arr):
+                suffix = '_H{:.3f}_rho{:.3f}'.format(H, rho)
+                patch_size[j,:] = np.load(_dir+f'patch_size{suffix}.npy')
+                num_patches[j,:] = np.load(_dir+f'num_patches{suffix}.npy')
+            # Plot
+            mean_size = np.mean(patch_size, axis=1) / L**2
+            axes[0].plot(
+                H_arr, mean_size, color='k', marker=markers[i], mfc='white',
+                markersize=4, label=r'$\rho=%.1f$'%(rho)
+            )
+            mean_num = np.mean(num_patches, axis=1)
+            axes[1].plot(
+                H_arr, mean_num, color='k', marker=markers[i], mfc='white',
+                markersize=4, label=r'$\rho=%.1f$'%(rho)
+            )
         
         # Limits, labels, etc
         labels = [r'mean patch size', r'mean number of patches']
