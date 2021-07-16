@@ -15,23 +15,23 @@ class Analyzer():
         L = 2**args.m
         # Specify and/or crease directories
         _dir = args.ddir+"sllvm/{L:d}x{L:d}/".format(L=L)
-        _rdir = args.rdir+"sllvm/{L:d}x{L:d}/".format(L=L)
+        _rdir = args.rdir+"sllvm/{L:d}x{L:d}/Lambda/".format(L=L)
         # Make directory if it does not exist
         if not os.path.exists(_rdir):
             os.makedirs(_rdir)
         # Load variable arrays
-        lambda_arr = np.loadtxt(_dir+"lambda.txt")
+        Lambda_arr = np.loadtxt(_dir+"Lambda.txt")
         seeds = np.loadtxt(_dir+"seeds.txt", dtype=int)
         # Allocate
-        N = np.zeros((len(lambda_arr), len(seeds)))
-        M = np.zeros((len(lambda_arr), len(seeds)))
-        for i, lambda_ in enumerate(lambda_arr):
+        N = np.zeros((len(Lambda_arr), len(seeds)))
+        M = np.zeros((len(Lambda_arr), len(seeds)))
+        for i, Lambda_ in enumerate(Lambda_arr):
             for j, seed in enumerate(seeds):
                 suffix = (
                     '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}'
                     '_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}_seed{:d}'.format(
                         args.T, args.N0, args.M0, args.H, args.rho, args.mu,
-                        args.Lambda, lambda_, args.sigma, args.alpha, seed
+                        Lambda_, args.lambda_, args.sigma, args.alpha, seed
                     )
                 )
                 _N = np.load(_dir+"pred_population{suffix:s}.npy".format(suffix=suffix))
@@ -41,9 +41,9 @@ class Analyzer():
         # Save
         save_suffix = (
             '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_'
-            'mu{:.4f}_Lambda{:.4f}_sig{:.4f}_a{:.3f}'.format(
+            'mu{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}'.format(
                 args.T, args.N0, args.M0, args.H, args.rho, 
-                args.mu, args.Lambda_, args.sigma, args.alpha
+                args.mu, args.lambda_, args.sigma, args.alpha
             )
         )
         np.save(_rdir+"N{suffix:s}".format(suffix=save_suffix), N)

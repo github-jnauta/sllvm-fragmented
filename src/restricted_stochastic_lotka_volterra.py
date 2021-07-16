@@ -324,7 +324,7 @@ def nb_SLLVM(
                                 pred_lattice[idx] = 0 
                                 occupied_sites[_k] = new_idx
                             ## (iv)(b) reproduce onto the prey site with probability Λ*λ 
-                            elif _r <  Lambda_*lambda_:
+                            elif 1-Lambda_ < _r <  1-Lambda_+Lambda_*lambda_:
                                 # Append new predator to appropriate lists
                                 flight_length.append(0)         # Reset its flight length
                                 curr_length.append(0) 
