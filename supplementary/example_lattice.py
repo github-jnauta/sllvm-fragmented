@@ -12,9 +12,7 @@ import src.lattice
 if __name__ == "__main__":
     Argus = src.args.Args() 
     args = Argus.args 
-    Lattice = src.lattice.Lattice()
-    # Set seed
-    np.random.seed(args.seed)
+    Lattice = src.lattice.Lattice(args.seed)
     # Generate lattice
     _lattice = Lattice.SpectralSynthesis2D(2**args.m, args.H)
     lattice = Lattice.binary_lattice(_lattice, args.rho)
