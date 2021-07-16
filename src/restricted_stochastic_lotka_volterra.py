@@ -42,26 +42,17 @@ def nb_sample_cdf(cdf):
         if rand < cdf[i]:
             return i + 1
 
-# Specific functions
 @numba.jit(nopython=True, cache=True)
-def nb_truncated_zipf(alpha, N):
-    """ Compute the cumulative distribution function for the truncated
-        discrete zeta distribution (Zipf's law)
-    """
-    x = np.arange(1, N+1)
-    weights = x ** -alpha
-    weights /= np.sum(weights)
-    cdf = np.cumsum(weights)
-    return cdf
-
-@numba.jit(nopython=True, cache=True)
-def nb_sample_powlaw_discrete(alpha, C, xmin=1):
+def nb_sample_powlaw_discrete(alpha, xmin=1):
     """ Generate discrete sample from the (truncated) powerlaw distribution
-        with normalization C (see https://www.jstor.org/stable/pdf/25662336.pdf)
-    """
-    _xmin = xmin - 0.5 
-    _sample = (_xmin**(1-alpha) + np.random.random()/C)**(1/(1-alpha))
-    _sample = np.floor(_sample)
+        (see https://www.jstor.org/stable/pdf/25662336.pdf, Eq. D.6)
+
+        Note: The used approximation is erronous for small values of xmin, and
+              becomes more precise for larger values. In this particular case, we
+              do not care so much about statistical precision, and hence we can 
+              use the approximation for xmin=1
+    """     
+    _sample = (xmin-0.5)*(1-np.random.random())**(-1/(alpha-1)) + 0.5
     return np.int64(_sample)
 
 @numba.jit(nopython=True, cache=True)
@@ -108,16 +99,16 @@ def nb_SLLVM(
         sites : np.array((L,L),dtype=np.int64)
             L x L numpy array of eligible sites for prey (1) and empty sites (0)
         mu : np.float64
-            Mortality rate of the predators (foragers)
+            Mortality rate of the predators (foragers) μ
         lambda_ : np.float64
-            Reproduction rate of the predators, note that prey consumption rate is then
-            defined by 1-lambda_
+            Reproduction rate of the predators λ, note that prey consumption rate is 
+            then defined by 1-lambda_
         Lambda_ : np.float64
-            Predator-prey interaction rate
+            Predator-prey interaction rate Λ
         sigma : np.float64
-            Reproduction rate of the prey (resources)
+            Reproduction rate of the prey (resources) σ
         alpha : np.float64
-            Levy walk parameter of the predators' movement
+            Levy walk parameter of the predators' movement α
         nmeasures : np.int64
             Number of times populations are measures at equally spaced intervals
         xmin : np.int64
@@ -129,18 +120,13 @@ def nb_SLLVM(
     L, _ = sites.shape              # Size of LxL lattice
     dmeas = T // nmeasures          # Δt at which measurements need to be collected
     _nn = 4                         # Number of nearest neighbors
-    # Compute normalization constant for Levy walks
-    C = -1 / ((xmin-0.5)**(1-alpha) - L**(1-alpha))
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
-
     N0 = L**2 // 10 if N0 == -1 else N0         # Initial number of predators
     alpha = np.inf if alpha == -1 else alpha    # Levy parameter
 
     ## Initialize constants
     delta_idx_2D = [[0,1], [0,-1], [1,0], [-1,0]]
-    # Compute cdf for Zipf's law as the discrete (truncated) inverse power law
-    _cdf = nb_truncated_zipf(alpha, L)
 
     ## Convert the eligible sites to 1D array
     sites = sites.flatten()
@@ -230,7 +216,7 @@ def nb_SLLVM(
             idx = occupied_sites[_k]
             neighbors = nb_get_1D_neighbors(idx, L)
             ## If the site contains both predator and prey, simply pick one
-            if prey_lattice[idx] and pred_lattice[idx]:
+            if prey_lattice[idx] and pred_lattice[idx]>0:
                 _is_prey = np.random.random() < 0.5 
             elif prey_lattice[idx]:
                 _is_prey = True 
@@ -294,8 +280,7 @@ def nb_SLLVM(
                 else:
                     ## (ii) start a new flight
                     if curr_length[_pred_id] == 0:
-                        # flight_length[_pred_id] = nb_sample_cdf(_cdf)
-                        flight_length[_pred_id] = nb_sample_powlaw_discrete(alpha, C)
+                        flight_length[_pred_id] = nb_sample_powlaw_discrete(alpha)
                         didx[_pred_id] = np.random.randint(0,4)
                     
                     ## (iii) continue the current (or just started) flight
@@ -324,7 +309,7 @@ def nb_SLLVM(
                                 pred_lattice[idx] = 0 
                                 occupied_sites[_k] = new_idx
                             ## (iv)(b) reproduce onto the prey site with probability Λ*λ 
-                            elif _r <  Lambda_*lambda_:
+                            elif 1-Lambda_ < _r <  1-Lambda_+Lambda_*lambda_:
                                 # Append new predator to appropriate lists
                                 flight_length.append(0)         # Reset its flight length
                                 curr_length.append(0) 

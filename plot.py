@@ -125,7 +125,7 @@ class Plotter():
         H_arr = np.loadtxt(_dir+'H.txt')
         # rho_arr = np.loadtxt(_dir+'rho.txt')
         # Initialize figure
-        fig, axes = plt.subplots(1,2, figsize=(8,3), tight_layout=True)
+        fig, axes = plt.subplots(1,2, figsize=(7,3.5/4*3), tight_layout=True)
         # Load data & plot
         # Allocate
         patch_size = np.zeros((len(H_arr), args.nmeasures))
@@ -136,13 +136,13 @@ class Plotter():
             patch_size[j,:] = np.load(_dir+f'patch_size{suffix}.npy')
             num_patches[j,:] = np.load(_dir+f'num_patches{suffix}.npy')
         # Plot
-        mean_size = np.mean(patch_size, axis=1)
-        axes[0].semilogy(
+        mean_size = np.mean(patch_size, axis=1) / L**2
+        axes[0].plot(
             H_arr, mean_size, color='k', marker='o', mfc='white',
             markersize=4, label=r'$\rho=%.1f$'%(args.rho)
         )
         mean_num = np.mean(num_patches, axis=1)
-        axes[1].semilogy(
+        axes[1].plot(
             H_arr, mean_num, color='k', marker='o', mfc='white',
             markersize=4, label=r'$\rho=%.1f$'%(args.rho)
         )
@@ -151,13 +151,14 @@ class Plotter():
         labels = [r'mean patch size', r'mean number of patches']
         for i, ax in enumerate(axes):
             ax.set_xlim(0, 1)
-            ax.set_ylim(bottom=1)
-            ax.set_xlabel(r'H', fontsize=14)
+            ax.set_ylim(bottom=0)
+            ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+            ax.set_xlabel(r'H', fontsize=16)
             ax.set_ylabel(labels[i], fontsize=14)
             if i == 0:
                 ax.legend(
-                    loc='upper left', frameon=False, handletextpad=0.2, fontsize=10,
-                    handlelength=1, ncol=2
+                    loc='upper left', frameon=False, handletextpad=0.4, fontsize=14,
+                    handlelength=1, ncol=2, borderaxespad=0.1
                 )
 
 
@@ -333,6 +334,7 @@ class Plotter():
         # Load variable arrays
         alpha_arr = np.loadtxt(_rdir+"alpha.txt")
         H_arr= np.loadtxt(_rdir+"H.txt")
+        # lambda_arr = np.loadtxt(_rdir+"lambda.txt")
         Lambda_arr = np.loadtxt(_rdir+"Lambda.txt")
         # Initialize figure
         fig, axes = plt.subplots(1, 3, figsize=(12,3), tight_layout=True)
@@ -340,8 +342,12 @@ class Plotter():
         # for i, ρ in enumerate(rho_arr):
         for i, H in enumerate(H_arr):
             for j, α in enumerate(alpha_arr):
-                suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_sig{:.4f}_a{:.3f}".format(
-                    args.T, args.N0, args.M0, H, args.rho, args.mu, args.sigma, α
+                suffix = (
+                    '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}'
+                    '_mu{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}'.format(
+                        args.T, args.N0, args.M0, H, args.rho, 
+                        args.mu, args.lambda_, args.sigma, α
+                    )
                 )
                 _N = np.load(_rdir+f"N{suffix}.npy") / (args.rho*L**2)
                 _M = np.load(_rdir+f"M{suffix}.npy") / (args.rho*L**2)
@@ -431,11 +437,11 @@ if __name__ == "__main__":
     # Pjotr.plot_lattice_evolution(args)
     # Pjotr.plot_lattice_initial(args)
     # Pjotr.plot_fragmented_lattice(args)
-    # Pjotr.plot_patch_distribution(args)
+    Pjotr.plot_patch_distribution(args)
 
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
-    Pjotr.plot_population_densities(args)
+    # Pjotr.plot_population_densities(args)
     # Pjotr.plot_population_phase_space(args)
 
     ## Dynamical system related plots
