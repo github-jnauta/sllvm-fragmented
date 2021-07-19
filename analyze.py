@@ -43,7 +43,7 @@ class Analyzer():
             self._printstr = (
                 '{L}x{L} lattice, H={H:.3f}, \u03C1={rho:.3f}, T={T:d},' \
                 '\u03BC={mu:.4f}, \u03C3={sigma:.4f}'.format(
-                    L=2**args.maxlevel, H=args.H, rho=args.rho, T=args.T,
+                    L=2**args.m, H=args.H, rho=args.rho, T=args.T,
                     mu=args.mu, lambda_=args.lambda_, sigma=args.sigma
                 )
             )
