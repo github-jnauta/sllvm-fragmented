@@ -26,7 +26,7 @@ plt.rcParams.update({
 import src.args 
 
 # Set markers & colors
-markers = ['s', '^', 'D', 'o', '>', '*', 'p', 'h', 'v', '<']
+markers = ['s', 'o', 'D', '^', '>', '*', 'p', 'h', 'v', '<']
 colors = [
     'firebrick', 'darkmagenta', 'darkgreen', 'navy', 'k', 'seagreen', 
     'darkorange', 'indigo', 'maroon', 'peru', 'orchid'
@@ -44,6 +44,16 @@ figbflabels = [
 class Plotter():
     def __init__(self):
         self.figdict = {}
+
+    #############
+    # Functions #
+    @staticmethod
+    def true_diversity(N, M, q=1):
+        if q == 1:
+            return np.exp(- M * np.ma.log(M).filled(0) - N * np.ma.log(N).filled(0))
+        else:
+            basic_sum = N**q + M**q               
+            return np.ma.power(basic_sum, (1/(1-q))).filled(0)
 
     #########################
     # Lattice related plots #
@@ -329,13 +339,6 @@ class Plotter():
         L = 2**args.m 
         _vardir = args.rdir+"sllvm/lambda/"
         _rdir = args.rdir+"sllvm/lambda/{L:d}x{L:d}/".format(L=L)
-        # Define functions
-        def true_diversity(N, M, q=1):
-            if q == 1:
-                return np.exp(- M * np.ma.log(M).filled(0) - N * np.ma.log(N).filled(0))
-            else:
-                basic_sum = N**q + M**q               
-                return np.ma.power(basic_sum, (1/(1-q))).filled(0)
         # Load variable arrays
         H_arr= np.loadtxt(_vardir+"H.txt")
         lambda_arr = np.loadtxt(_vardir+"lambda.txt") * args.Lambda_
@@ -365,7 +368,7 @@ class Plotter():
                 markersize=4, label=r"$H=%.1f$"%(H)
             )
             # Plot the diversity metric
-            D = true_diversity(N, M, q=1)
+            D = Plotter.true_diversity(N, M, q=1)
             axes[2].semilogx(
                 lambda_arr, D, color=colors[i], marker=markers[i], mfc='white',
                 markersize=4
@@ -403,6 +406,60 @@ class Plotter():
             ax.set_xlabel(r"$\lambda$", fontsize=15)
         # Save
         self.figdict["population_densities"] = fig 
+
+    def plot_population_densities_alpha(self, args):
+        """ Plot quasistationary population densities as a function of α,
+            for different Hurst exponents H (and interaction rates Λ)
+        """
+        L = 2**args.m
+        # Specify directory
+        _dir = args.rdir+'sllvm/alpha/'
+        _rdir = args.rdir+'sllvm/alpha/{L:d}x{L:d}/'.format(L=L)
+        # Load variables
+        alpha_arr = np.loadtxt(_dir+'alpha.txt')
+        H_arr = np.loadtxt(_dir+'H.txt')
+        Lambda_arr = np.loadtxt(_dir+'Lambda.txt')
+        # Initialize figure
+        fig, axes = plt.subplots(1,3, figsize=(12,3), tight_layout=True)
+        # Load data & plot 
+        for i, H in enumerate(H_arr):
+            # Load data
+            suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}' \
+                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
+                args.T, args.N0, args.M0, H, 
+                args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
+            )
+            _N = np.load(_rdir+'N{:s}.npy'.format(suffix))
+            _M = np.load(_rdir+'M{:s}.npy'.format(suffix))
+            N = np.mean(_N, axis=1) / (args.rho*L**2)
+            M = np.mean(_M, axis=1) / (args.rho*L**2)
+            # Plot
+            axes[0].plot(
+                alpha_arr, N, color=colors[i], marker=markers[i], mfc='white',
+                markersize=4, label=r'$H=%.1f$'%(H)
+            )
+            axes[1].plot(
+                alpha_arr, M, color=colors[i], marker=markers[i], mfc='white',
+                markersize=4, label=r'$H=%.1f$'%(H)
+            )
+            D = Plotter.true_diversity(N, M)
+            axes[2].plot(
+                alpha_arr, D, color=colors[i], marker=markers[i], mfc='white',
+                markersize=4, label=r'$H=%.1f$'%(H)
+            )
+        # Limits, labels, etc
+        ylabels = [r'$N^*$', r'$M^*$', r'$^1D$']
+        for i, ax in enumerate(axes):
+            ax.set_xlim(1, 3)
+            ax.set_ylim(bottom=0)
+            ax.set_xlabel(r'$\alpha$', fontsize=16)
+            ax.set_ylabel(ylabels[i], fontsize=16)
+            if i == 1:
+                ax.legend(
+                    loc='lower right', fontsize=10, ncol=2, labelspacing=0.1,
+                    handletextpad=0.1, borderaxespad=0.1, handlelength=1,
+                    columnspacing=0.4, frameon=False
+                )
         
 
     ###########################
@@ -444,11 +501,12 @@ if __name__ == "__main__":
     # Pjotr.plot_lattice_evolution(args)
     # Pjotr.plot_lattice_initial(args)
     # Pjotr.plot_fragmented_lattice(args)
-    # Pjotr.plot_patch_distribution(args)
+    Pjotr.plot_patch_distribution(args)
 
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
     Pjotr.plot_population_densities(args)
+    Pjotr.plot_population_densities_alpha(args)
     # Pjotr.plot_population_phase_space(args)
 
     ## Dynamical system related plots

@@ -28,7 +28,7 @@ class Args():
         )
         ## Resource variables
         parser.add_argument(
-            '--sigma', dest='sigma', type=float, default=0.1,
+            '--sigma', dest='sigma', type=float, default=0.2,
             help='specify the reproduction rate of the prey (resources)'
         )
         ## Forager variables
@@ -63,6 +63,10 @@ class Args():
         parser.add_argument(
             '--k', dest='nmeasures', type=int, default=100,
             help='specify the number of times population size needs to be measured'
+        )
+        parser.add_argument(
+            '--nbins', dest='nbins', type=int, default=35,
+            help='specify the number of bins for histograms'
         )
         ## Boolean variables
         parser.add_argument(
