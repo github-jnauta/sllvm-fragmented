@@ -90,7 +90,11 @@ class Args():
             '--rdir', dest='rdir', type=str, default='results/',
             help='specify directory for output data'
         )
-        
+        ## Analysis variables
+        parser.add_argument(
+            '--arg', dest='argument', type=str, default='lambda',
+            help='specify name of argument "x" for which "f(x)" is computed'
+        )
         # Parse arguments
         self.args = parser.parse_args()
 
