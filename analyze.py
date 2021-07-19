@@ -35,7 +35,7 @@ class Analyzer():
             )
             self._suffix = (
                 '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}'
-                '_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:s}_seed{:d}'.format(
+                '_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:s}_seed{:s}'.format(
                     args.T, args.N0, args.M0, args.H, args.rho, args.mu,
                     args.Lambda_, args.lambda_, args.sigma, '{var:.3f}', '{seed:s}'
                 )
