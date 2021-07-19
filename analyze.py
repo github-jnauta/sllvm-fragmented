@@ -37,12 +37,12 @@ class Analyzer():
                 '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}'
                 '_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:s}_seed{:d}'.format(
                     args.T, args.N0, args.M0, args.H, args.rho, args.mu,
-                    args.Lambda_, args.lambda_, args.sigma, '{var:.3f}', '{seed:d}'
+                    args.Lambda_, args.lambda_, args.sigma, '{var:.3f}', '{seed:s}'
                 )
             )
             self._printstr = (
                 '{L}x{L} lattice, H={H:.3f}, \u03C1={rho:.3f}, T={T:d},' \
-                '\u03B1={alpha:.3f}, \u03BC={mu:.4f}, \u03C3={sigma:.4f}'.format(
+                '\u03BC={mu:.4f}, \u03C3={sigma:.4f}'.format(
                     L=2**args.maxlevel, H=args.H, rho=args.rho, T=args.T,
                     mu=args.mu, lambda_=args.lambda_, sigma=args.sigma
                 )
