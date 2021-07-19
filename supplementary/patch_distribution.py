@@ -32,10 +32,19 @@ if __name__ == "__main__":
         lattice = Lattice.binary_lattice(fBs, args.rho)
         # Compute the labelled lattice using periodic boundary conditions
         labelled_lattice, num_labels = src.lattice.nb_applyPBC(*label(lattice))
-        # Compute the mean patch size
+        # Find the label for which lattice entries are empty        
         labels, sizes = np.unique(labelled_lattice, return_counts=True)
-        patch_size[k] = np.mean(sizes)
-        num_patches[k] = num_labels
+        for lab in labels:
+            if not np.any(lattice[np.where(labelled_lattice==lab)]):
+                break
+        mask = np.ones(len(labels), bool)
+        mask[np.argwhere(labels==lab)] = False
+        labels = labels[mask]
+        sizes = sizes[mask]
+        # Compute the mean patch size
+        patch_size[k] = np.max(sizes)
+        # patch_size[k] = np.mean(sizes)
+        num_patches[k] = num_labels - 1
     
     # Save 
     suffix = '_H{:.3f}_rho{:.3f}'.format(args.H, args.rho)
