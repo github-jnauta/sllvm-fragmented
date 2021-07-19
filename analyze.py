@@ -37,14 +37,16 @@ class Analyzer():
                 '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}'
                 '_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:s}_seed{:s}'.format(
                     args.T, args.N0, args.M0, args.H, args.rho, args.mu,
-                    args.Lambda_, args.lambda_, args.sigma, '{var:.3f}', '{seed:s}'
+                    args.Lambda_, args.lambda_, args.sigma, '{var:.3f}', '{seed:d}'
                 )
             )
             self._printstr = (
-                '{L}x{L} lattice, H={H:.3f}, \u03C1={rho:.3f}, T={T:d},' \
+                '{L}x{L} lattice, H={H:.3f}, \u03C1={rho:.3f}, T={T:d}, ' \
+                '\u039B={Lambda_:.4f}, \u03BB={lambda_:.4f}, ' \
                 '\u03BC={mu:.4f}, \u03C3={sigma:.4f}'.format(
                     L=2**args.m, H=args.H, rho=args.rho, T=args.T,
-                    mu=args.mu, lambda_=args.lambda_, sigma=args.sigma
+                    Lambda_=args.Lambda_, lambda_=args.lambda_, 
+                    mu=args.mu, sigma=args.sigma
                 )
             )
         else:
