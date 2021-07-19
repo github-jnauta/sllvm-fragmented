@@ -33,29 +33,30 @@ class Analyzer():
             _varstr = 'Lambda{:.4f}_lambda{:4f}_sig{:.4f}'.format(
                 args.Lambda_, args.lambda_, args.sigma
             )
+            _suffix = (
+                '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}'
+                '_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:s}_seed{:d}'.format(
+                    args.T, args.N0, args.M0, args.H, args.rho, args.mu,
+                    args.Lambda_, args.lambda_, args.sigma, '{var:.3f}', '{seed:d}'
+                )
+            )
         else:
             print('No specified suffix structure for given argument: {:s}'.format(args.argument))
             exit()
-        return _dir, _rdir, _varstr, _var_arr
+        return _dir, _rdir, _varstr, _var_arr, _suffix
 
     def compute_population_densities(self, args):
         """ Compute the average population in the quasistationary state """ 
         # Get directories based on the argument
-        _dir, _rdir, _varstr, _var_arr = self._get_string_dependent_vars(args)
+        _dir, _rdir, _varstr, _var_arr, _suffix = self._get_string_dependent_vars(args)
         # Load variable arrays
         seeds = np.loadtxt(_dir+"seeds.txt", dtype=int)
         # Allocate
         N = np.zeros((len(_var_arr), len(seeds)))
         M = np.zeros((len(_var_arr), len(seeds)))
-        for i, lambda_ in enumerate(_var_arr):
+        for i, var in enumerate(_var_arr):
             for j, seed in enumerate(seeds):
-                suffix = (
-                    '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}'
-                    '_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}_seed{:d}'.format(
-                        args.T, args.N0, args.M0, args.H, args.rho, args.mu,
-                        args.Lambda_, lambda_, args.sigma, args.alpha, seed
-                    )
-                )
+                suffix = _suffix.format(var=var, seed=seed)
                 _N = np.load(_dir+"pred_population{suffix:s}.npy".format(suffix=suffix))
                 _M = np.load(_dir+"prey_population{suffix:s}.npy".format(suffix=suffix))
                 N[i,j] = np.mean(_N[-25:])
