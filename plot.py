@@ -376,6 +376,7 @@ class Plotter():
             # y = D[7:17]
             # popt, _ = curve_fit(f, x, y)
             # a, b = popt
+            # print(10**b)
             # axes[2].plot(
             #     10**x, f(x, a, b), color=colors[i], linewidth=1
             # )
