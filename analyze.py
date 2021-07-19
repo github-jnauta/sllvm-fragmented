@@ -49,6 +49,11 @@ class Analyzer():
                     mu=args.mu, sigma=args.sigma
                 )
             )
+            self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}' \
+                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
+                args.T, args.N0, args.M0, args.H, 
+                args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
+            )
         else:
             print('No specified suffix structure for given argument: {:s}'.format(args.argument))
             exit()
@@ -71,11 +76,8 @@ class Analyzer():
                 N[i,j] = np.mean(_N[-25:])
                 M[i,j] = np.mean(_M[-25:])
         # Save
-        save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_{:s}'.format(
-                args.T, args.N0, args.M0, args.H, args.rho, args.mu, self._varstr
-        )
-        np.save(self._rdir+"N{suffix:s}".format(suffix=save_suffix), N)
-        np.save(self._rdir+"M{suffix:s}".format(suffix=save_suffix), M)
+        np.save(self._rdir+"N{suffix:s}".format(suffix=self.save_suffix), N)
+        np.save(self._rdir+"M{suffix:s}".format(suffix=self.save_suffix), M)
         # Print closing statements
         print("Computed quasistationary population densities for \n %s"%(self._printstr))
     
