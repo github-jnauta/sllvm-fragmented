@@ -22,11 +22,11 @@ class Analyzer():
         if not os.path.exists(self._rdir):
             os.makedirs(self._rdir)
         # Load specific variable (argument) array
-        _var_arr = np.loadtxt(self._dir+'{name:s}.txt'.format(name=args.argument))
+        self._var_arr = np.loadtxt(self._dir+'{name:s}.txt'.format(name=args.argument))
         # Specify suffix depending on the argument 
         # (adapt as necessary)
         if args.argument == 'Lambda':
-            _varstr = 'lambda{:.4f}_sig{:.4f}_a{:.3f}'.format(
+            self._varstr = 'lambda{:.4f}_sig{:.4f}_a{:.3f}'.format(
                 args.lambda_, args.sigma, args.alpha
             )
         elif args.argument == 'alpha':
