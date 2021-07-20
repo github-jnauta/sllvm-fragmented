@@ -28,7 +28,7 @@ class Args():
         )
         ## Resource variables
         parser.add_argument(
-            '--sigma', dest='sigma', type=float, default=0.1,
+            '--sigma', dest='sigma', type=float, default=0.2,
             help='specify the reproduction rate of the prey (resources)'
         )
         ## Forager variables
@@ -41,7 +41,7 @@ class Args():
             help='specify predator mortality rate'
         )
         parser.add_argument(
-            '--lambda', dest='lambda_', type=float, default=0.1,
+            '--lambda', dest='lambda_', type=float, default=0.02,
             help='specify predator reproduction rate λ'
         )
         parser.add_argument(
@@ -63,6 +63,10 @@ class Args():
         parser.add_argument(
             '--k', dest='nmeasures', type=int, default=50,
             help='specify the number of times population size needs to be measured'
+        )
+        parser.add_argument(
+            '--nbins', dest='nbins', type=int, default=50,
+            help='specify the number of bins for histograms'
         )
         ## Boolean variables
         parser.add_argument(
@@ -90,7 +94,11 @@ class Args():
             '--rdir', dest='rdir', type=str, default='results/',
             help='specify directory for output data'
         )
-        
+        ## Analysis variables
+        parser.add_argument(
+            '--arg', dest='argument', type=str, default='lambda',
+            help='specify name of argument "x" for which "f(x)" is computed'
+        )
         # Parse arguments
         self.args = parser.parse_args()
 

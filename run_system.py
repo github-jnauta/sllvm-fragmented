@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     if not args.nosave:
         # Specify directory, and make it if it does not yet exist
-        _dir = args.ddir+"sllvm/{L:d}x{L:d}/".format(L=2**args.m)
+        _dir = args.ddir+"sllvm/{:s}/{L:d}x{L:d}/".format(args.argument, L=2**args.m)
         if not os.path.exists(_dir):
             os.makedirs(_dir)
         suffix = (
@@ -31,8 +31,9 @@ if __name__ == "__main__":
             )
         )
         # Save
-        for key, item in output.items():
-            np.save(_dir + "{name:s}{suffix:s}".format(name=key, suffix=suffix), item)
+        if not args.nosave:
+            for key, item in output.items():
+                np.save(_dir + "{name:s}{suffix:s}".format(name=key, suffix=suffix), item)
 
     # Print some closing statements
     printstr = (
