@@ -65,7 +65,7 @@ class Args():
             help='specify the number of times population size needs to be measured'
         )
         parser.add_argument(
-            '--nbins', dest='nbins', type=int, default=35,
+            '--nbins', dest='nbins', type=int, default=50,
             help='specify the number of bins for histograms'
         )
         ## Boolean variables
