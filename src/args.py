@@ -41,7 +41,7 @@ class Args():
             help='specify predator mortality rate'
         )
         parser.add_argument(
-            '--lambda', dest='lambda_', type=float, default=0.1,
+            '--lambda', dest='lambda_', type=float, default=0.05,
             help='specify predator reproduction rate λ'
         )
         parser.add_argument(
@@ -96,7 +96,7 @@ class Args():
         )
         ## Analysis variables
         parser.add_argument(
-            '--arg', dest='argument', type=str, default='lambda',
+            '--arg', dest='argument', type=str, default='alpha',
             help='specify name of argument "x" for which "f(x)" is computed'
         )
         # Parse arguments
