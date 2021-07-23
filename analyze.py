@@ -16,7 +16,7 @@ class Analyzer():
         # Compute some variables
         L = 2**args.m
         # Determine directory inputs
-        self._dir = args.ddir+'sllvm/{L:d}x{L:d}/'.format(L=L)
+        self._dir = args.ddir+'sllvm/{arg:s}/{L:d}x{L:d}/'.format(arg=args.argument, L=L)
         self._rdir = args.rdir+'sllvm/{name:s}/{L:d}x{L:d}/'.format(name=args.argument, L=L)
         # Make directory if it does not exist
         if not os.path.exists(self._rdir):
@@ -25,14 +25,29 @@ class Analyzer():
         self._var_arr = np.loadtxt(self._dir+'{name:s}.txt'.format(name=args.argument))
         # Specify suffix depending on the argument 
         # (adapt as necessary)
-        if args.argument == 'Lambda':
-            self._varstr = 'lambda{:.4f}_sig{:.4f}_a{:.3f}'.format(
-                args.lambda_, args.sigma, args.alpha
+        if args.argument == 'lambda':
+            self._suffix = (
+                '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}'
+                '_Lambda{:.4f}_lambda{:s}_sig{:.4f}_a{:.3f}_seed{:s}'.format(
+                    args.T, args.N0, args.M0, args.H, args.rho, args.mu,
+                    args.Lambda_, '{var:.4f}', args.sigma, args.alpha, '{seed:d}'
+                )
+            )
+            self._printstr = (
+                '{L}x{L} lattice, H={H:.3f}, \u03C1={rho:.3f}, T={T:d}, ' \
+                '\u039B={Lambda_:.4f}, \u03B1={alpha:.3f}, ' \
+                '\u03BC={mu:.4f}, \u03C3={sigma:.4f}'.format(
+                    L=2**args.m, H=args.H, rho=args.rho, T=args.T,
+                    Lambda_=args.Lambda_, alpha=args.alpha,
+                    mu=args.mu, sigma=args.sigma
+                )
+            )
+            self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}' \
+                'Lambda{:.4f}_alpha{:.3f}_mu{:.4f}_sigma{:.4f}'.format(
+                args.T, args.N0, args.M0, args.H,
+                args.rho, args.Lambda_, args.alpha, args.mu, args.sigma
             )
         elif args.argument == 'alpha':
-            self._varstr = 'Lambda{:.4f}_lambda{:4f}_sig{:.4f}'.format(
-                args.Lambda_, args.lambda_, args.sigma
-            )
             self._suffix = (
                 '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}'
                 '_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:s}_seed{:s}'.format(

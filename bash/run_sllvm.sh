@@ -67,7 +67,7 @@ echo "${seeds[@]}" > $DATADIR/seeds.txt
 echo "${alpha[@]}" > $DATADIR/alpha.txt
 echo "${H[@]}" > $DATADIR/H.txt
 echo "${Lambda[@]}" > $DATADIR/Lambda.txt
-#mapfile -t lambda < lambda.txt; mv lambda.txt $DATADIR
+mapfile -t lambda < lambda.txt; mv lambda.txt $DATADIR
 
 if [ $SSH ]; then 
     ## EXECUTE Python script in parallel on all available CPU threads
@@ -75,7 +75,7 @@ if [ $SSH ]; then
 	echo "Executing code, #seeds $NSEEDS"
         parallel -S $nodes_string --sshdelay 0.1 --delay 0.1 "
         cd {1};
-        python run_system.py --alpha {2} --H {3} --Lambda {4} --lambda {5} --seed {5};
+        python run_system.py --alpha {2} --H {3} --Lambda {4} --lambda {5} --seed {6};
         " ::: $CODEDIR ::: ${alpha[@]} ::: ${H[@]} ::: ${Lambda[@]} ::: ${lambda[@]} ::: ${seeds[@]}
     fi 
     ## RETRIEVE data 
