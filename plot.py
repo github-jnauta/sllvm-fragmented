@@ -140,9 +140,7 @@ class Plotter():
         # Specify bins for distribution plot
         bins = np.logspace(0, np.log10(0.1*L**2+1), num=args.nbins, dtype=np.int64)
         bins = np.unique(bins)
-        # print(bins, 0.1*L**2); exit()
-        # Initialize figure        
-        # fig, axes = plt.subplots(1,3, figsize=(11.5,3.5/4*3), tight_layout=True)
+        # Initialize figure
         fig = plt.figure(figsize=(7, 7/4*3), tight_layout=True)
         gs = fig.add_gridspec(4,4)
         ax1 = fig.add_subplot(gs[0:2,0:2])
@@ -227,57 +225,63 @@ class Plotter():
     ## Animated plots
     def plot_lattice_evolution(self, args):
         # Specify directory
-        _dir = args.ddir+"sllvm/{L:d}x{L:d}/".format(L=2**args.m)
+        _dir = args.ddir+"sllvm/evolution/{L:d}x{L:d}/".format(L=2**args.m)
         _rdir = "figures/"
         # Set variables
         def get_image(alpha):
-            # Load lattice
+            # Load lattice            
             suffix = (
-                '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_'
-                'Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}_seed{:d}'.format(
-                    args.T, args.N0, args.M0, args.H, args.rho, args.mu, 
-                    args.Lambda_, args.lambda_, args.sigma, alpha, args.seed
+                '_T{:d}_N{:d}_M{:d}_H{:.3f}'
+                '_rho{:.3f}_mu{:.4f}_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}'
+                '_seed{:d}'.format(
+                    args.T, args.N0, args.M0, args.H, args.rho, 
+                    args.mu, args.Lambda_, args.lambda_, args.sigma, args.alpha,
+                    args.seed
                 )
             )
             lattice = np.load(_dir+"lattice{suffix:s}.npy".format(suffix=suffix))
-            # pred_population = np.load(_dir+"pred_population{suffix:s}.npy".format(suffix=suffix))
-            # print(pred_population)
-            sites = np.load(_dir+"sites{suffix:s}.npy".format(suffix=suffix))
             # Reshape
             L_sq, _ = lattice.shape
             L = int(np.sqrt(L_sq))
-            lattice = lattice.reshape(L,L,args.nmeasures+1)
-            sites = sites.reshape(L,L)
-            # Specify the colormap
-            color_map = {
-                -1: np.array([255, 0, 0]),      # prey, red
-                0:  np.array([255, 255, 255]),  # empty, white
-                1:  np.array([128, 128, 128]),  # eligible for prey, grey
-                2:  np.array([0, 0, 0])         # predators, black
-            }
             # Generate the image to be shown with correct colormap
-            lattice[lattice>=1] = 2
-            im = np.ndarray(shape=(L,L,args.nmeasures+1,3), dtype=np.int64)
-            for i in range(L):
-                for j in range(L):
-                    im[i,j,:,:] = color_map[sites[i,j]]
-                    for t in range(args.nmeasures+1):
-                        if lattice[i,j,t]:
-                            im[i,j,t,:] = color_map[lattice[i,j,t]]
-            return im 
+            # sites = np.load(_dir+"sites{suffix:s}.npy".format(suffix=suffix))
+            # sites = sites.reshape(L,L)
+            # lattice[lattice>1] = 2            
+            # Specify the colormap
+            # color_map = {
+            #     -1: np.array([255, 0, 0]),      # prey, red
+            #     0:  np.array([255, 255, 255]),  # empty, white
+            #     1:  np.array([255, 255, 255]),  # eligible for prey, grey
+            #     2:  np.array([0, 0, 0])         # predators, black
+            # }
+            # im = np.ndarray(shape=(L,L,args.nmeasures+1,3), dtype=np.int64)
+            # for i in range(L):
+            #     for j in range(L):
+            #         im[i,j,:,:] = color_map[sites[i,j]]
+            #         for t in range(args.nmeasures+1):
+            #             if lattice[i,j,t]:
+            #                 im[i,j,t,:] = color_map[lattice[i,j,t]]
+            return lattice 
+
         # Initialize figure
         fig, ax = plt.subplots(1, 1, figsize=(4,4), tight_layout=True)
+        # Generate colormap and normalization for coloring
+        cmap = matplotlib.colors.ListedColormap(['red', 'white', 'grey', 'black'])
+        bounds=[-1,0,1,2,3]
+        norm = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
         # Plot
         image = get_image(args.alpha)
         ax.xaxis.tick_top()
-        im = ax.imshow(image[:,:,0,:])
-        
+        # im = ax.imshow(image[:,:,0,:])
+        im = ax.imshow(image[:,:,0], cmap=cmap, norm=norm)
+        # Define update function for animation
         def update(t):
-            lattice_t = image[:,:,t,:]
+            lattice_t = image[:,:,t]
             im.set_array(lattice_t)
             return im
-
+        # Create the animation
         anim = animation.FuncAnimation(fig, update, interval=25, frames=args.nmeasures+1)
+        # Show or save
         if not args.save:
             plt.show()
         else:
@@ -288,7 +292,6 @@ class Plotter():
                 _rdir+"gifs/lattice_animation{suffix:s}.gif".format(suffix=suffix),
                 writer='imagemagick', fps=10
             )
-
 
     ## Static plots
     def plot_lattice(self, args):
@@ -524,20 +527,19 @@ class Plotter():
         _rdir = args.rdir+'sllvm/lambda/{L:d}x{L:d}/'.format(L=L)
         # Load variables
         lambda_arr = np.loadtxt(_dir+'lambda.txt')
-        # H_arr = np.loadtxt(_dir+'H.txt')
+        H_arr = np.loadtxt(_dir+'H.txt')
         # alpha_arr = np.loadtxt(_dir+'alpha.txt')
-        alpha_arr = [1.1, 2., 3.]
         # Lambda_arr = np.loadtxt(_dir+'Lambda.txt')
         # Initialize figure
         fig, axes = plt.subplots(1,3, figsize=(12,3), tight_layout=True)
         # Load data & plot
-        # for i, H in enumerate(H_arr):
-        for i, alpha in enumerate(alpha_arr):
+        for i, H in enumerate(H_arr):
+        # for i, alpha in enumerate(alpha_arr):
             # Load data
             suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}' \
                 'Lambda{:.4f}_alpha{:.3f}_mu{:.4f}_sigma{:.4f}'.format(
-                args.T, args.N0, args.M0, args.H,
-                args.rho, args.Lambda_, alpha, args.mu, args.sigma
+                args.T, args.N0, args.M0, H,
+                args.rho, args.Lambda_, args.alpha, args.mu, args.sigma
             )
             _N = np.load(_rdir+'N{:s}.npy'.format(suffix))
             _M = np.load(_rdir+'M{:s}.npy'.format(suffix))
@@ -546,34 +548,36 @@ class Plotter():
             # Plot
             axes[0].semilogx(
                 lambda_arr, N, color=colors[i], marker=markers[i], mfc='white',
-                markersize=4, label=r'$\alpha=%.1f$'%(alpha) #label=r'$H=%.1f$'%(H)
+                markersize=4, label=r'$H=%.2f$'%(H)#label=r'$\alpha=%.1f$'%(alpha)
             )
             axes[1].semilogx(
                 lambda_arr, M, color=colors[i], marker=markers[i], mfc='white',
-                markersize=4, label=r'$\alpha=%.1f$'%(alpha) #label=r'$H=%.1f$'%(H)
+                markersize=4, label=r'$H=%.2f$'%(H)#label=r'$\alpha=%.1f$'%(alpha)
             )
             D = Plotter.true_diversity(N, M)
+            D = (N+M)*(D-1)
+            # D = (N/(N+M))**2 + (M/(N+M))**2
+            # pM = np.ma.divide(M,(M+N)).filled(1)
+            # pN = np.ma.divide(N,(M+N)).filled(1)
+            # D = pM**2 + pN**2
+            # Simpson = 1 / D
             axes[2].semilogx(
                 lambda_arr, D, color=colors[i], marker=markers[i], mfc='white',
-                markersize=4, label=r'$\alpha=%.1f$'%(alpha) #label=r'$H=%.1f$'%(H)
+                markersize=4, label=r'$H=%.2f$'%(H)#label=r'$\alpha=%.1f$'%(alpha)
             )
-            # print(N)
-            # print(M)
-            # print(D)
-            # exit()
         # Limits, labels, etc
-        ylabels = [r'$N^*$', r'$M^*$', r'$^1D$']
+        ylabels = [r'$N^*$', r'$M^*$', r'richness']
         for i, ax in enumerate(axes):
             ax.set_xlim(min(lambda_arr), max(lambda_arr))
             if i == 2:
-                ax.set_ylim(bottom=1)
+                ax.set_ylim(bottom=0)
             else:
                 ax.set_ylim(bottom=0)
             ax.set_xlabel(r'$\lambda$', fontsize=16)
             ax.set_ylabel(ylabels[i], fontsize=16)
             if i == 1:
                 ax.legend(
-                    loc='lower left', fontsize=10, ncol=2, labelspacing=0.1,
+                    loc='upper right', fontsize=11, ncol=1, labelspacing=0.1,
                     handletextpad=0.1, borderaxespad=0.1, handlelength=1,
                     columnspacing=0.4, frameon=False
                 )
@@ -665,7 +669,7 @@ if __name__ == "__main__":
     ## Lattice related plots
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
-    # Pjotr.plot_lattice_evolution(args)
+    Pjotr.plot_lattice_evolution(args)
     # Pjotr.plot_lattice_initial(args)
     # Pjotr.plot_fragmented_lattice(args)
     # Pjotr.plot_patch_distribution(args)
@@ -674,7 +678,7 @@ if __name__ == "__main__":
     # Pjotr.plot_population_dynamics(args)
     # Pjotr.plot_population_densities(args)
     # Pjotr.plot_population_densities_alpha(args)
-    Pjotr.plot_population_densities_lambda(args)
+    # Pjotr.plot_population_densities_lambda(args)
     # Pjotr.plot_population_phase_space(args)
 
     ## Flight length related plots

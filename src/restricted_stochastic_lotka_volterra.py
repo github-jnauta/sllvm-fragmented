@@ -151,8 +151,7 @@ def nb_SLLVM(
     _nn = 4                         # Number of nearest neighbors
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
-    N0 = np.int64(rho/2*L**2) if N0 == -1 else N0         # Initial number of predators
-    alpha = np.inf if alpha == -1 else alpha    # Levy parameter
+    N0 = np.int64(rho/3*L**2) if N0 == -1 else N0         # Initial number of predators
 
     ## Initialize constants
     delta_idx_2D = [[0,1], [0,-1], [1,0], [-1,0]]
@@ -172,7 +171,7 @@ def nb_SLLVM(
     prey_sites = np.where(sites==1)[0]
     M0 = min(M0, np.int64(rho/2*L**2))
     if M0 == -1:
-        M0 = N0 if rho==1 else np.int64(rho/2*L**2)
+        M0 = N0 if rho==1 else np.int64(rho/3*L**2)
     prey_idxs = np.random.choice(prey_sites, size=M0, replace=False)
     for i in prey_idxs:
         prey_lattice[i] = True 
@@ -211,8 +210,9 @@ def nb_SLLVM(
     # Allocate and initialice lattice configuration if visualize flag is given
     lattice_configuration = np.zeros((L*L, nmeasures+1), dtype=np.int16)
     if visualize:
+        lattice_configuration[sites>0,0] = 1
         lattice_configuration[prey_lattice,0] = -1 
-        lattice_configuration[pred_lattice>0,0] = 1
+        lattice_configuration[pred_lattice>0,0] = 2
 
     ##############################################
     ## Run the stochastic Lotka-Volterra system ##
@@ -223,8 +223,9 @@ def nb_SLLVM(
             prey_population[imeas] = M 
             pred_population[imeas] = N
             if visualize:
+                lattice_configuration[sites>0,imeas] = 1
                 lattice_configuration[prey_lattice,imeas] = -1 
-                lattice_configuration[pred_lattice>0,imeas] = 1
+                lattice_configuration[pred_lattice>0,imeas] = 2
 
         ## Stop the simulation if:
         # prey goes extinct, as predators will also go extinct
@@ -322,91 +323,90 @@ def nb_SLLVM(
                     new_idx = _i * L + _j
                     # Ensure single occupancy by doing nothing when the site is
                     # already occupied by a predator or predators
-                    # if pred_lattice[new_idx] > 0:
-                    #     # Count flight length for the distribution 
-                    #     if 0 < curr_length[_pred_id] < np.max(bins):
-                    #         bin = np.searchsorted(bins, curr_length[_pred_id])
-                    #         flight_lengths[bin] += 1
-                    #     curr_length[_pred_id] = 0       # Truncate current flight
-                    #     print('truncating')
-                    # else:
-                    # Increment current path length
-                    curr_length[_pred_id] += 1
-
-                    ## (iv) interact with prey        
-                    if prey_lattice[new_idx]:
-                        _r = np.random.random()
-                        ## (iv)(a) do not interact with prey with probability 1-Λ
-                        if _r < 1 - Lambda_:                                
-                            # Update predator lattice
-                            pred_lattice[new_idx] = pred_lattice[idx]
-                            pred_lattice[idx] = 0 
-                            occupied_sites[_k] = new_idx
-                        ## (iv)(b) reproduce onto the prey site with probability Λ*λ 
-                        elif 1-Lambda_ < _r <  1-Lambda_+Lambda_*lambda_:
-                            # Append new predator to appropriate lists
-                            flight_length.append(0)         # Reset its flight length
-                            curr_length.append(0) 
-                            didx.append(0)
-                            # Update predator lattice
-                            pred_lattice[new_idx] = current_max_id
-                            current_max_id += 1
-                            N += 1
-                            # Update prey lattice
-                            prey_lattice[new_idx] = False   # Remove prey from that site                                
-                            # Count flight length for the distribution 
-                            if curr_length[_pred_id] < np.max(bins):
-                                bin = np.searchsorted(bins, curr_length[_pred_id])
-                                flight_lengths[bin] += 1
-                            curr_length[_pred_id] = 0       # Truncate current flight
-                            M -= 1
-                        ## (iv)(c) consume (replace) prey with probability Λ*(1-λ)
-                        else:
-                            # Remove the site previously occupied by the predator
-                            occupied_sites[_k], occupied_sites[-1] = occupied_sites[-1], occupied_sites[_k]
-                            del occupied_sites[-1]
-                            K -= 1
-                            # Update predator lattice 
-                            pred_lattice[new_idx] = pred_lattice[idx]
-                            pred_lattice[idx] = 0
-                            # Update prey lattice
-                            prey_lattice[new_idx] = False   # Remove prey from that site                                                                
-                            # Count flight length for the distribution 
-                            if curr_length[_pred_id] < np.max(bins):
-                                bin = np.searchsorted(bins, curr_length[_pred_id])
-                                flight_lengths[bin] += 1
-                            curr_length[_pred_id] = 0       # Truncate current flight
-                            M -= 1
-                            
-                        # If the site was previously not counted due to prey being surrounded
-                        # on all sides, we need to re-include these sites and all its neighbors
-                        if not_counted_lattice[new_idx]:
-                            occupied_sites.append(new_idx)
-                            not_counted_lattice[new_idx] = False 
-                            K += 1
-                            # Get the neighbors
-                            _neighbors = nb_get_1D_neighbors(new_idx, L)
-                            # Loop through the neighbors
-                            for _idx in _neighbors:
-                                if not_counted_lattice[_idx]:
-                                    occupied_sites.append(_idx)
-                                    not_counted_lattice[_idx] = False 
-                                    K += 1
-                    else:
-                        ## Displace
-                        pred_lattice[new_idx] = pred_lattice[idx]
-                        pred_lattice[idx] = 0 
-                        occupied_sites[_k] = new_idx                        
-
-                    # End current flight if current path length exceeds sampled length
-                    if curr_length[_pred_id] >= flight_length[_pred_id]:
+                    if pred_lattice[new_idx] > 0:
                         # Count flight length for the distribution 
-                        if curr_length[_pred_id] < np.max(bins):
+                        if 0 < curr_length[_pred_id] < np.max(bins):
                             bin = np.searchsorted(bins, curr_length[_pred_id])
                             flight_lengths[bin] += 1
-                            # print(bin, bins, curr_length[_pred_id]); exit()
-                        curr_length[_pred_id] = 0 
-    
+                        curr_length[_pred_id] = 0       # Truncate current flight                        
+                    else:
+                        # Increment current path length
+                        curr_length[_pred_id] += 1
+
+                        ## (iv) interact with prey        
+                        if prey_lattice[new_idx]:
+                            _r = np.random.random()
+                            ## (iv)(a) do not interact with prey with probability 1-Λ
+                            if _r < 1 - Lambda_:                                
+                                # Update predator lattice
+                                pred_lattice[new_idx] = pred_lattice[idx]
+                                pred_lattice[idx] = 0 
+                                occupied_sites[_k] = new_idx
+                            ## (iv)(b) reproduce onto the prey site with probability Λ*λ 
+                            elif 1-Lambda_ < _r <  1-Lambda_+Lambda_*lambda_:
+                                # Append new predator to appropriate lists
+                                flight_length.append(0)         # Reset its flight length
+                                curr_length.append(0) 
+                                didx.append(0)
+                                # Update predator lattice
+                                pred_lattice[new_idx] = current_max_id
+                                current_max_id += 1
+                                N += 1
+                                # Update prey lattice
+                                prey_lattice[new_idx] = False   # Remove prey from that site                                
+                                # Count flight length for the distribution 
+                                if curr_length[_pred_id] < np.max(bins):
+                                    bin = np.searchsorted(bins, curr_length[_pred_id])
+                                    flight_lengths[bin] += 1
+                                curr_length[_pred_id] = 0       # Truncate current flight
+                                M -= 1
+                            ## (iv)(c) consume (replace) prey with probability Λ*(1-λ)
+                            else:
+                                # Remove the site previously occupied by the predator
+                                occupied_sites[_k], occupied_sites[-1] = occupied_sites[-1], occupied_sites[_k]
+                                del occupied_sites[-1]
+                                K -= 1
+                                # Update predator lattice 
+                                pred_lattice[new_idx] = pred_lattice[idx]
+                                pred_lattice[idx] = 0
+                                # Update prey lattice
+                                prey_lattice[new_idx] = False   # Remove prey from that site                                                                
+                                # Count flight length for the distribution 
+                                if curr_length[_pred_id] < np.max(bins):
+                                    bin = np.searchsorted(bins, curr_length[_pred_id])
+                                    flight_lengths[bin] += 1
+                                curr_length[_pred_id] = 0       # Truncate current flight
+                                M -= 1
+                                
+                            # If the site was previously not counted due to prey being surrounded
+                            # on all sides, we need to re-include these sites and all its neighbors
+                            if not_counted_lattice[new_idx]:
+                                occupied_sites.append(new_idx)
+                                not_counted_lattice[new_idx] = False 
+                                K += 1
+                                # Get the neighbors
+                                _neighbors = nb_get_1D_neighbors(new_idx, L)
+                                # Loop through the neighbors
+                                for _idx in _neighbors:
+                                    if not_counted_lattice[_idx]:
+                                        occupied_sites.append(_idx)
+                                        not_counted_lattice[_idx] = False 
+                                        K += 1
+                        else:
+                            ## Displace
+                            pred_lattice[new_idx] = pred_lattice[idx]
+                            pred_lattice[idx] = 0 
+                            occupied_sites[_k] = new_idx                        
+
+                        # End current flight if current path length exceeds sampled length
+                        if curr_length[_pred_id] >= flight_length[_pred_id]:
+                            # Count flight length for the distribution 
+                            if curr_length[_pred_id] < np.max(bins):
+                                bin = np.searchsorted(bins, curr_length[_pred_id])
+                                flight_lengths[bin] += 1
+                                # print(bin, bins, curr_length[_pred_id]); exit()
+                            curr_length[_pred_id] = 0 
+
     return prey_population, pred_population, coexistence, flight_lengths, lattice_configuration
 
 #################################
@@ -434,8 +434,12 @@ class SLLVM(object):
         bins = np.unique(bins)
         # Pre-compute the Riemann zeta function for sampling of discrete power law variables
         flightlengths = np.arange(xmin, xmax)
-        norm = zeta(args.alpha, xmin) - zeta(args.alpha, xmax)
-        P = (zeta(args.alpha, flightlengths) - zeta(args.alpha, xmax))/norm 
+        if args.alpha == -1:
+            P = np.zeros(len(flightlengths))
+            P[0] = 1. 
+        else:
+            norm = zeta(args.alpha, xmin) - zeta(args.alpha, xmax)
+            P = (zeta(args.alpha, flightlengths) - zeta(args.alpha, xmax))/norm 
         # Initialize dictionary
         outdict = {}
         # Run 
