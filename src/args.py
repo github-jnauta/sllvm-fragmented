@@ -61,11 +61,11 @@ class Args():
             '--T', dest='T', type=int, default=5000, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
-            '--k', dest='nmeasures', type=int, default=100,
+            '--k', dest='nmeasures', type=int, default=1000,
             help='specify the number of times population size needs to be measured'
         )
         parser.add_argument(
-            '--nbins', dest='nbins', type=int, default=50,
+            '--nbins', dest='nbins', type=int, default=35,
             help='specify the number of bins for histograms'
         )
         ## Boolean variables

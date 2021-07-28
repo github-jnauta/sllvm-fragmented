@@ -23,6 +23,11 @@ if __name__ == "__main__":
     # Allocate
     patch_size = np.zeros(args.nmeasures)
     num_patches = np.zeros(args.nmeasures)
+    # Specify bins for distribution computation
+    bins = np.logspace(0, np.log10(args.rho*L**2+1), num=args.nbins, dtype=np.int64)
+    bins = np.unique(bins)
+    total_patch_number = 0 
+    pdf = np.zeros(len(bins))
 
     # Compute the average patch size and number of patches
     for k in range(args.nmeasures):
@@ -39,17 +44,26 @@ if __name__ == "__main__":
                 break
         mask = np.ones(len(labels), bool)
         mask[np.argwhere(labels==lab)] = False
+        # Apply the mask
         labels = labels[mask]
         sizes = sizes[mask]
-        # Compute the mean patch size
+        # Determine frequency
+        indices = np.searchsorted(bins, sizes)
+        indices, counts = np.unique(indices, return_counts=True)
+        pdf[indices] += counts
+        # Compute the max patch size
         patch_size[k] = np.max(sizes)
-        # patch_size[k] = np.mean(sizes)
-        num_patches[k] = num_labels - 1
-    
+        num_patches[k] = num_labels
+        total_patch_number += num_patches[k]
+    # Normalize frequency to compute pdf
+    pdf = pdf / total_patch_number
     # Save 
     suffix = '_H{:.3f}_rho{:.3f}'.format(args.H, args.rho)
     _dir = f'../data/patch_distribution/{L}x{L}/'
     if not os.path.exists(_dir):
         os.makedirs(_dir)
-    np.save(_dir+f'patch_size{suffix}', patch_size)
-    np.save(_dir+f'num_patches{suffix}', num_patches)
+    # np.save(_dir+f'patch_size{suffix}', patch_size)
+    np.save(_dir+f'patch_distribution{suffix}', pdf)
+    # np.save(_dir+f'num_patches{suffix}', num_patches)
+    # Print closing statement
+    print(f'Computed for H={args.H}, \u03C1={args.rho}')
