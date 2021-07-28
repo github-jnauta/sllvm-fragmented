@@ -151,8 +151,7 @@ def nb_SLLVM(
     _nn = 4                         # Number of nearest neighbors
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
-    N0 = np.int64(rho*L**2) if N0 == -1 else N0         # Initial number of predators
-    alpha = np.inf if alpha == -1 else alpha    # Levy parameter
+    N0 = np.int64(rho/3*L**2) if N0 == -1 else N0         # Initial number of predators
 
     ## Initialize constants
     delta_idx_2D = [[0,1], [0,-1], [1,0], [-1,0]]
@@ -170,9 +169,9 @@ def nb_SLLVM(
 
     ## Distribute prey on eligible sites
     prey_sites = np.where(sites==1)[0]
-    M0 = min(M0, np.int64(rho*L**2))
+    M0 = min(M0, np.int64(rho/2*L**2))
     if M0 == -1:
-        M0 = N0 if rho==1 else np.int64(rho*L**2)
+        M0 = N0 if rho==1 else np.int64(rho/3*L**2)
     prey_idxs = np.random.choice(prey_sites, size=M0, replace=False)
     for i in prey_idxs:
         prey_lattice[i] = True 
@@ -211,8 +210,9 @@ def nb_SLLVM(
     # Allocate and initialice lattice configuration if visualize flag is given
     lattice_configuration = np.zeros((L*L, nmeasures+1), dtype=np.int16)
     if visualize:
+        lattice_configuration[sites>0,0] = 1
         lattice_configuration[prey_lattice,0] = -1 
-        lattice_configuration[pred_lattice>0,0] = 1
+        lattice_configuration[pred_lattice>0,0] = 2
 
     ##############################################
     ## Run the stochastic Lotka-Volterra system ##
@@ -223,8 +223,9 @@ def nb_SLLVM(
             prey_population[imeas] = M 
             pred_population[imeas] = N
             if visualize:
+                lattice_configuration[sites>0,imeas] = 1
                 lattice_configuration[prey_lattice,imeas] = -1 
-                lattice_configuration[pred_lattice>0,imeas] = 1
+                lattice_configuration[pred_lattice>0,imeas] = 2
 
         ## Stop the simulation if:
         # prey goes extinct, as predators will also go extinct
@@ -327,7 +328,7 @@ def nb_SLLVM(
                         if 0 < curr_length[_pred_id] < np.max(bins):
                             bin = np.searchsorted(bins, curr_length[_pred_id])
                             flight_lengths[bin] += 1
-                        curr_length[_pred_id] = 0       # Truncate current flight
+                        curr_length[_pred_id] = 0       # Truncate current flight                        
                     else:
                         # Increment current path length
                         curr_length[_pred_id] += 1
@@ -405,7 +406,7 @@ def nb_SLLVM(
                                 flight_lengths[bin] += 1
                                 # print(bin, bins, curr_length[_pred_id]); exit()
                             curr_length[_pred_id] = 0 
-    
+
     return prey_population, pred_population, coexistence, flight_lengths, lattice_configuration
 
 #################################
@@ -426,15 +427,19 @@ class SLLVM(object):
             _lattice = self.Lattice.SpectralSynthesis2D(2**args.m, args.H)
             sites = self.Lattice.binary_lattice(_lattice, args.rho)
         # Compute maximum flight length 
-        xmax = 10*2**args.m if not xmax else xmax 
+        xmax = 5*2**args.m if not xmax else xmax 
         xmax_measure = 2*2**args.m if not xmax else xmax 
         # Pre-compute the bins for distribution over flight lenghts
         bins = np.logspace(np.log10(xmin), np.log10(xmax_measure), num=args.nbins, dtype=np.int64)
         bins = np.unique(bins)
         # Pre-compute the Riemann zeta function for sampling of discrete power law variables
         flightlengths = np.arange(xmin, xmax)
-        norm = zeta(args.alpha, xmin) - zeta(args.alpha, xmax)
-        P = (zeta(args.alpha, flightlengths) - zeta(args.alpha, xmax))/norm 
+        if args.alpha == -1:
+            P = np.zeros(len(flightlengths))
+            P[0] = 1. 
+        else:
+            norm = zeta(args.alpha, xmin) - zeta(args.alpha, xmax)
+            P = (zeta(args.alpha, flightlengths) - zeta(args.alpha, xmax))/norm 
         # Initialize dictionary
         outdict = {}
         # Run 
@@ -447,7 +452,7 @@ class SLLVM(object):
         outdict['prey_population'] = output[0]
         outdict['pred_population'] = output[1]
         outdict['coexistence'] = output[2]
-        outdict['flight_lenghts'] = output[3]
+        outdict['flight_lengths'] = output[3]
         if args.visualize:
             outdict['sites'] = sites 
             outdict['lattice'] = output[4]
