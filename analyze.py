@@ -83,6 +83,8 @@ class Analyzer():
         # Allocate
         N = np.zeros((len(self._var_arr), len(seeds)))
         M = np.zeros((len(self._var_arr), len(seeds)))
+        Nt = np.zeros((args.nmeasures, len(seeds)))
+        Mt = np.zeros((args.nmeasures, len(seeds)))
         for i, var in enumerate(self._var_arr):
             for j, seed in enumerate(seeds):
                 suffix = self._suffix.format(var=var, seed=seed)
