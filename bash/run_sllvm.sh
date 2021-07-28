@@ -57,12 +57,14 @@ fi
 ## DEFINE variables and sequences
 #  Additionally store these variables in files for later use (e.g. analysis, plotting)
 seeds=$(seq 1 1 $NSEEDS)
-alpha=$(seq 1.1 0.1 3.0)
+alpha=(1.1 2.0 3.0)
+#alpha=$(seq 1.1 0.1 3.0)
 #H=$(seq 0.1 0.1 0.9)
-H=(0.01 0.2 0.5 0.9)
-# python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,0,25), fmt="%.4e")'
-lambda=(0.05)
-Lambda=(0.5)
+#H=(0.01 0.2 0.5 0.9)
+H=(0.01 0.1 0.2 0.5 0.9)
+python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,0,35), fmt="%.4e")'
+#lambda=(0.05)
+Lambda=(0.1 0.5 1)
 mkdir -p $DATADIR
 echo "${seeds[@]}" > $DATADIR/seeds.txt
 echo "${alpha[@]}" > $DATADIR/alpha.txt
@@ -83,7 +85,7 @@ if [ $SSH ]; then
     if $GETDATA; then 
         for node in ${noboss_nodes[@]}; do 
             echo $node; 
-            rsync -avz --include='*.npy' $node:${DATADIR} ${DATADIR}/
+            rsync -avz --include='*sig0.1*.npy' --exclude='*' $node:${DATADIR} ${DATADIR}/
         done 
     fi
 fi 
