@@ -243,6 +243,7 @@ class Plotter():
             # Reshape
             L_sq, _ = lattice.shape
             L = int(np.sqrt(L_sq))
+            lattice = lattice.reshape(L,L,args.nmeasures+1)
             # Generate the image to be shown with correct colormap
             # sites = np.load(_dir+"sites{suffix:s}.npy".format(suffix=suffix))
             # sites = sites.reshape(L,L)
@@ -675,7 +676,7 @@ if __name__ == "__main__":
     # Pjotr.plot_patch_distribution(args)
 
     ## Population density related plots
-    # Pjotr.plot_population_dynamics(args)
+    Pjotr.plot_population_dynamics(args)
     # Pjotr.plot_population_densities(args)
     # Pjotr.plot_population_densities_alpha(args)
     # Pjotr.plot_population_densities_lambda(args)
