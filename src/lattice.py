@@ -5,6 +5,12 @@
 # Import necessary libraries
 import numpy as np 
 import numba
+from numba.core import types
+from numba.typed import Dict
+from scipy.ndimage import label
+# Define the type used in the dictionary
+int_ = types.int64
+int_array = types.int64[:]
 
 @numba.jit(nopython=True, cache=True)
 def nb_set_seed(seed):
@@ -53,6 +59,18 @@ def nb_applyPBC(lattice, num_labels):
                 num_labels -= 1
     return lattice, num_labels
 
+@numba.jit(nopython=True, cache=True)
+def nb_construct_label_list(labelled_lattice, labels):
+    # Go through each label, and gather their indices and put them in a list of lists
+    label_dict = Dict.empty(
+        key_type=int_,
+        value_type=int_array,
+    )  
+    for lab in labels:
+        indices = np.flatnonzero(labelled_lattice==lab)
+        label_dict[lab] = indices
+    return label_dict
+
 class Lattice(object):
     def __init__(self, seed) -> None:
         nb_set_seed(seed)
@@ -62,6 +80,8 @@ class Lattice(object):
             ρ ∈ [0,1] determines the occupancy, where ρN is the (integer) number of sites
             available to be occupied by resources
         """
+        if rho == 1:
+            return np.ones(lattice.shape, dtype=np.bool_)
         shifted_lattice = lattice + abs(np.min(lattice))    # Shift
         sorted_lattice = np.sort(shifted_lattice.flatten()) # Sort 
         # Determine cutoff point
@@ -71,6 +91,22 @@ class Lattice(object):
         _lattice[_lattice >= 1] = 1                         # All above cutoff to 1
         _lattice[_lattice < 1] = 0                          # All below to 0
         return np.asarray(_lattice, dtype=np.bool_)
+    
+    def label(self, lattice):
+        """ Compute the labelled lattice using periodic boundary conditions """
+        labelled_lattice, num_labels = nb_applyPBC(*label(lattice))              
+        labels = np.unique(labelled_lattice)
+        # Find the label for which lattice entries are empty
+        for lab in labels:
+            if not np.any(lattice[np.where(labelled_lattice==lab)]):
+                break
+        # Compute mask for those indices
+        mask = np.ones(len(labels), bool)
+        mask[np.argwhere(labels==lab)] = False
+        # Apply the mask
+        labels = labels[mask]
+        label_list = nb_construct_label_list(labelled_lattice, labels)        
+        return label_list, num_labels
 
     def SpectralSynthesis2D(self, L, H, sig=1, bounds=[0,1]):
         """ Generate fractional Brownian in two dimensions 

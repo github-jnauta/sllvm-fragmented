@@ -64,10 +64,13 @@ class Plotter():
         _dir = args.ddir+"landscapes/"
         # Load lattice(s)
         _H = [0.01, 0.1, 0.5, 0.99]
+        _rho = [0.1, 0.2, 0.3, 0.4]
         L = 2**args.m
         # Initialize figure
         fig, axes = plt.subplots(1, len(_H), figsize=(2.5*len(_H), 2.5), tight_layout=True)
+        # fig, axes = plt.subplots(1, len(_rho), figsize=(2.5*len(_rho), 2.5), tight_layout=True)
         for i, H in enumerate(_H):
+        # for i, rho in enumerate(_rho):
             suffix = "_{L:d}x{L:d}_H{H:.3f}_rho{rho:.3f}".format(L=L, H=H, rho=args.rho)
             lattice = np.load(_dir+"lattice{suffix:s}.npy".format(suffix=suffix))
             axes[i].imshow(lattice, cmap='Greys')
@@ -330,37 +333,71 @@ class Plotter():
     def plot_population_dynamics(self, args):
         L = 2**args.m
         _dir = args.ddir+"sllvm/evolution/{L:d}x{L:d}/".format(L=L)
-        # Initialize figure
-        fig, ax = plt.subplots(1,1, figsize=(5,3.5), tight_layout=True)
-        # Plot
-        suffix = (
-            '_T{:d}_N{:d}_M{:d}_H{:.3f}'
-            '_rho{:.3f}_mu{:.4f}_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}'
-            '_seed{:d}'.format(
-                args.T, args.N0, args.M0, args.H, args.rho, 
-                args.mu, args.Lambda_, args.lambda_, args.sigma, args.alpha,
-                args.seed
-            )
-        )
-        N = np.load(_dir+"pred_population%s.npy"%(suffix)) / L**2
-        M = np.load(_dir+"prey_population%s.npy"%(suffix)) / L**2
-        # N = np.mean(N, axis=1) / L**2
-        # M = np.mean(M, axis=1) / L**2
-        # N = _N / L**2 
-        # M = _M / L**2
+        # Load variables
+        H_arr = [0.01, 0.1, 0.5]
         xax = args.T / args.nmeasures * np.arange(args.nmeasures+1)
-        ax.plot(
-            xax, N, color='k', linewidth=0.85, label=r'$N^*$'
-        )
-        ax.plot(
-            xax, M, color='navy', linewidth=0.85, label=r'$M^*$'
-        )
+        # Initialize figure
+        fig, axes = plt.subplots(1,2, figsize=(7,3.5/4*3), tight_layout=True)
+        axin = axes[0].inset_axes([0.485,0.5,0.45,0.45])
+        # Plot
+        for i, H in enumerate(H_arr):
+            suffix = (
+                '_T{:d}_N{:d}_M{:d}_H{:.3f}'
+                '_rho{:.3f}_mu{:.4f}_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}'
+                '_seed{:d}'.format(
+                    args.T, args.N0, args.M0, H, args.rho, 
+                    args.mu, args.Lambda_, args.lambda_, args.sigma, args.alpha,
+                    args.seed
+                )
+            )
+            # Plot population density
+            N = np.load(_dir+"pred_population%s.npy"%(suffix)) 
+            M = np.load(_dir+"prey_population%s.npy"%(suffix)) 
+            axes[0].plot(
+                xax, N / L**2, color=colors[i], linewidth=0.85, label=r'$H=%.2f$'%(H)
+            )
+            axes[0].plot(
+                xax, M / L**2, color=colors[i], linestyle='--', linewidth=0.85
+            )
+            # Plot predators on habitat
+            ph = np.load(_dir+"predators_on_habitat%s.npy"%(suffix)) / N
+            axin.plot(
+                xax, ph, color=colors[i], linewidth=0.85
+            )
+            # Plot habitat efficiency
+            # eta_h = np.load(_dir+"habitat_efficiency%s.npy"%(suffix)) / L**2
+            # eta_h[:args.nmeasures//2+1] /= args.rho 
+            # eta_h[args.nmeasures//2+1:] /= (args.rho / 3)
+            # axes[1].plot(
+            #     xax, eta_h, color=colors[i], linewidth=0.85, label=r'$H=%.2f$'%(H)
+            # )
+            I = np.load(_dir+"isolated_patches%s.npy"%(suffix)).astype(float)
+            I = np.cumsum(I) 
+            # num_patches = np.load(_dir+"num_patches%s.npy"%(suffix))
+            # num_reduced_patches = np.load(_dir+"num_reduced_patches%s.npy"%(suffix))
+            I[:args.nmeasures//2+1] /= (args.rho * L**2)
+            I[args.nmeasures//2+1:] /= (args.rho/5 * L**2)
+            axes[1].plot(
+                xax, I, linestyle='--', color=colors[i], linewidth=0.85, label=r'$H=%.2f$'%(H)
+            )
         # Limits, labels, etc
-        ax.set_xlim(0, args.T)
-        ax.set_ylim(bottom=0)
-        ax.set_xlabel(r"$t$", fontsize=14)
-        ax.set_ylabel(r"population", fontsize=14)
-        ax.legend(loc='upper right', fontsize=12, frameon=False)
+        ylabels = [r"population", r"$\eta_h$"]
+        for i, ax in enumerate(axes):
+            ax.set_xlim(0, args.T)
+            if i == 0:
+                ax.set_ylim(0,0.25)
+            else:
+                ax.set_ylim(0,1)
+                ax.legend(
+                    loc='upper right', fontsize=14, handlelength=1, handletextpad=0.4,
+                    borderaxespad=0.1, labelspacing=0.2, frameon=False
+                )
+            ax.set_xlabel(r"$t$", fontsize=16)
+            ax.set_ylabel(ylabels[i], fontsize=16)
+        axin.set_xlim(0, args.T)
+        axin.set_ylim(0,1.05)
+        axin.set_xlabel(r"$t$", fontsize=12)
+        axin.set_ylabel(r"$p_h$", fontsize=12)
 
     def plot_population_phase_space(self, args):
         L = 2**args.m 
@@ -527,7 +564,8 @@ class Plotter():
         _dir = args.rdir+'sllvm/lambda/'
         _rdir = args.rdir+'sllvm/lambda/{L:d}x{L:d}/'.format(L=L)
         # Load variables
-        lambda_arr = np.loadtxt(_dir+'lambda.txt')
+        # lambda_arr = np.loadtxt(_dir+'lambda.txt')
+        lambda_arr = np.logspace(-3,0,25)
         H_arr = np.loadtxt(_dir+'H.txt')
         # alpha_arr = np.loadtxt(_dir+'alpha.txt')
         # Lambda_arr = np.loadtxt(_dir+'Lambda.txt')
