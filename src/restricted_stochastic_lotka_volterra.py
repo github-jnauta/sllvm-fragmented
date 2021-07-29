@@ -151,7 +151,7 @@ def nb_SLLVM(
     _nn = 4                         # Number of nearest neighbors
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
-    N0 = np.int64(L**2/6) if N0 == -1 else N0         # Initial number of predators
+    N0 = np.int64(L**2/10) if N0 == -1 else N0         # Initial number of predators
 
     ## Initialize constants
     delta_idx_2D = [[0,1], [0,-1], [1,0], [-1,0]]
@@ -170,7 +170,7 @@ def nb_SLLVM(
 
     ## Distribute prey on eligible sites
     prey_sites = np.flatnonzero(sites==1)
-    M0 = min(M0, np.int64(L**2/6))
+    M0 = min(M0, np.int64(L**2/10))
     if M0 == -1:
         M0 = N0 if rho==1 else np.int64(L**2/6)
     prey_idxs = np.random.choice(prey_sites, size=M0, replace=False)
@@ -191,6 +191,7 @@ def nb_SLLVM(
     flight_length = [i for i in gen]    # Sampled flight length of individual predators
     curr_length = [0 for i in gen]      # Current path length of individual predators
     didx = [0 for i in gen]             # Current direction of individual predators
+    Lambda_lst = [1. for i in gen]      # Detection probability of predator
     current_max_id = N0 + 1
     ## Allocate other lists
     empty_labels = [np.int64(i) for i in range(0)]
@@ -366,6 +367,9 @@ def nb_SLLVM(
                         # Sample new flight length
                         flight_length[_pred_id] = nb_sample_powlaw_discrete(P, xmin)
                         didx[_pred_id] = np.random.randint(0,4)
+                        # Update detection probability
+                        if Lambda_ == -1:
+                            Lambda_lst[_pred_id] = 1 / flight_length[_pred_id]
                     
                     ## (iii) continue the current (or just started) flight
                     # Determine new 1D index using periodic boundary conditions
@@ -383,22 +387,22 @@ def nb_SLLVM(
                     else:
                         # Increment current path length
                         curr_length[_pred_id] += 1
-
                         ## (iv) interact with prey        
                         if prey_lattice[new_idx]:
                             _r = np.random.random()
                             ## (iv)(a) do not interact with prey with probability 1-Λ
-                            if _r < 1 - Lambda_:                                
+                            if _r < 1 - Lambda_lst[_pred_id]:                                
                                 # Update predator lattice
                                 pred_lattice[new_idx] = pred_lattice[idx]
                                 pred_lattice[idx] = 0 
                                 occupied_sites[_k] = new_idx
                             ## (iv)(b) reproduce onto the prey site with probability Λ*λ 
-                            elif 1-Lambda_ < _r <  1-Lambda_+Lambda_*lambda_:
+                            elif 1-Lambda_lst[_pred_id] < _r <  1-Lambda_lst[_pred_id]+Lambda_lst[_pred_id]*lambda_:
                                 # Append new predator to appropriate lists
                                 flight_length.append(0)         # Reset its flight length
                                 curr_length.append(0) 
                                 didx.append(0)
+                                Lambda_lst.append(1.)
                                 # Update predator lattice
                                 pred_lattice[new_idx] = current_max_id
                                 current_max_id += 1
