@@ -496,15 +496,13 @@ class Plotter():
         _rdir = args.rdir+'sllvm/alpha/{L:d}x{L:d}/'.format(L=L)
         # Load variables
         alpha_arr = np.loadtxt(_dir+'alpha.txt')
-        # H_arr = np.loadtxt(_dir+'H.txt')
-        H_arr = [0.9]
-        Lambda_arr = np.loadtxt(_dir+'Lambda.txt')
+        H_arr = np.loadtxt(_dir+'H.txt')
         # Initialize figure
         fig, axes = plt.subplots(3,1, figsize=(5/4*3,7), tight_layout=True)
         # Load data & plot 
         for i, H in enumerate(H_arr):
             # Load data
-            suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}' \
+            suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_' \
                 'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
                 args.T, args.N0, args.M0, H, 
                 args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
@@ -522,25 +520,25 @@ class Plotter():
                 alpha_arr, M, color=colors[i], marker=markers[i], mfc='white',
                 markersize=4, label=r'$H=%.2f$'%(H)
             )
-            D = Plotter.true_diversity(N, M)
+            D = (Plotter.true_diversity(N, M)-1)*(N+M)
             axes[2].plot(
                 alpha_arr, D, color=colors[i], marker=markers[i], mfc='white',
                 markersize=4, label=r'$H=%.2f$'%(H)
             )
         # Limits, labels, etc
-        ylabels = [r'$N^*$', r'$M^*$', r'$^1D$']
+        ylabels = [r'$N$', r'$M$', r'richness']
         for i, ax in enumerate(axes):
             ax.set_xlim(1, 3)
             ax.set_xlabel(r'$\alpha$', fontsize=16)
             ax.set_ylabel(ylabels[i], fontsize=16)
             if i == 1:
                 ax.legend(
-                    loc='lower center', fontsize=11, ncol=2, labelspacing=0.1,
+                    loc='lower left', fontsize=11, ncol=1, labelspacing=0.1,
                     handletextpad=0.1, borderaxespad=0.1, handlelength=1,
                     columnspacing=0.6, frameon=False
                 )
             if i == 2:
-                ax.set_ylim(1,2)
+                ax.set_ylim(bottom=0)
             else:
                 ax.set_ylim(bottom=0)
          
@@ -698,7 +696,7 @@ if __name__ == "__main__":
     ## Lattice related plots
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
-    Pjotr.plot_lattice_evolution(args)
+    # Pjotr.plot_lattice_evolution(args)
     # Pjotr.plot_lattice_initial(args)
     # Pjotr.plot_fragmented_lattice(args)
     # Pjotr.plot_patch_distribution(args)
@@ -706,7 +704,7 @@ if __name__ == "__main__":
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
     # Pjotr.plot_population_densities(args)
-    # Pjotr.plot_population_densities_alpha(args)
+    Pjotr.plot_population_densities_alpha(args)
     # Pjotr.plot_population_densities_lambda(args)
     # Pjotr.plot_population_phase_space(args)
 
