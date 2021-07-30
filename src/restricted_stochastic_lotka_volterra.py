@@ -86,7 +86,7 @@ def nb_get_1D_neighbors(idx, L):
 # @profile
 @numba.jit(nopython=True, cache=True)
 def nb_SLLVM(
-        T, N0, M0, sites, reduced_sites, mu, lambda_, Lambda_, sigma, alpha, P, 
+        T, N0, M0, sites, reduced_sites, mu, lambda_, Lambda_, sigma, alpha, P, P_reduced,
         sites_patch_dict, reduced_sites_patch_dict,
         nmeasures, bins, visualize, xmin=1, reduce=True
     ):
@@ -151,7 +151,7 @@ def nb_SLLVM(
     _nn = 4                         # Number of nearest neighbors
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
-    N0 = np.int64(L**2/10) if N0 == -1 else N0         # Initial number of predators
+    N0 = np.int64(L**2/10) if N0 == -1 else N0  # Initial number of predators
 
     ## Initialize constants
     delta_idx_2D = [[0,1], [0,-1], [1,0], [-1,0]]
@@ -170,9 +170,7 @@ def nb_SLLVM(
 
     ## Distribute prey on eligible sites
     prey_sites = np.flatnonzero(sites==1)
-    M0 = min(M0, np.int64(L**2/10))
-    if M0 == -1:
-        M0 = N0 if rho==1 else np.int64(L**2/6)
+    M0 = N0 if M0 == -1 else M0 
     prey_idxs = np.random.choice(prey_sites, size=M0, replace=False)
     for i in prey_idxs:
         prey_lattice[i] = True 
@@ -289,6 +287,8 @@ def nb_SLLVM(
             not_counted_lattice = np.zeros(L*L, dtype=np.bool_)
             # Reset number of occupied sites
             K = N + M 
+            # Reconfigure the complementary CDF, as predators will now be sampling with α
+            P = P_reduced
 
         # Generate random numbers in bulk
         steps = K 
@@ -459,7 +459,7 @@ def nb_SLLVM(
                             if curr_length[_pred_id] < np.max(bins):
                                 bin = np.searchsorted(bins, curr_length[_pred_id])
                                 flight_lengths[bin] += 1
-                            curr_length[_pred_id] = 0     
+                            curr_length[_pred_id] = 0
     
     return prey_population, pred_population, coexistence, flight_lengths, habitat_efficiency, predators_on_habitat, isolated_patches, lattice_configuration
 
@@ -488,19 +488,17 @@ class SLLVM(object):
         bins = np.logspace(np.log10(xmin), np.log10(xmax_measure), num=args.nbins, dtype=np.int64)
         bins = np.unique(bins)
         # Pre-compute the Riemann zeta function for sampling of discrete power law variables
-        flightlengths = np.arange(xmin, xmax)
-        if args.alpha == -1:
-            P = np.zeros(len(flightlengths))
-            P[0] = 1. 
-        else:
-            norm = zeta(args.alpha, xmin) - zeta(args.alpha, xmax)
-            P = (zeta(args.alpha, flightlengths) - zeta(args.alpha, xmax))/norm 
+        flightlengths = np.arange(xmin, xmax)        
+        P = np.zeros(len(flightlengths))
+        P[0] = 1.
+        norm = zeta(args.alpha, xmin) - zeta(args.alpha, xmax)
+        P_reduced = (zeta(args.alpha, flightlengths) - zeta(args.alpha, xmax))/norm 
         # Initialize dictionary
         outdict = {}
         # Run 
         output = nb_SLLVM(
             args.T, args.N0, args.M0, sites, reduced_sites,
-            args.mu, args.lambda_, args.Lambda_, args.sigma, args.alpha, P,
+            args.mu, args.lambda_, args.Lambda_, args.sigma, args.alpha, P, P_reduced,
             sites_patch_dict, reduced_sites_patch_dict,
             args.nmeasures, bins, args.visualize
         )
