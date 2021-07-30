@@ -88,7 +88,7 @@ def nb_get_1D_neighbors(idx, L):
 def nb_SLLVM(
         T, N0, M0, sites, reduced_sites, mu, lambda_, Lambda_, sigma, alpha, P, P_reduced,
         sites_patch_dict, reduced_sites_patch_dict,
-        nmeasures, bins, visualize, xmin=1, reduce=True
+        nmeasures, bins, visualize, xmin=1, reduce=False
     ):
     """ Runs the stochastic lattice Lotka-Volterra model
         While the lattice is a 2D (square) lattice, we first convert everyting to a 
