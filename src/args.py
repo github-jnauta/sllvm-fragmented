@@ -20,7 +20,7 @@ class Args():
             '--H', dest='H', type=float, default=0.9, help='Hurst exponent'
         )
         parser.add_argument(
-            '--rho', dest='rho', type=float, default=0.1, help='level of occupancy'
+            '--rho', dest='rho', type=float, default=1, help='level of occupancy'
         )
         parser.add_argument(
             '--M0', dest='M0', type=int, default=-1, 
@@ -28,7 +28,7 @@ class Args():
         )
         ## Resource variables
         parser.add_argument(
-            '--sigma', dest='sigma', type=float, default=0.1,
+            '--sigma', dest='sigma', type=float, default=0.2,
             help='specify the reproduction rate of the prey (resources)'
         )
         ## Forager variables
@@ -41,7 +41,7 @@ class Args():
             help='specify predator mortality rate'
         )
         parser.add_argument(
-            '--lambda', dest='lambda_', type=float, default=0.05,
+            '--lambda', dest='lambda_', type=float, default=0.025,
             help='specify predator reproduction rate λ'
         )
         parser.add_argument(
@@ -61,7 +61,7 @@ class Args():
             '--T', dest='T', type=int, default=5000, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
-            '--k', dest='nmeasures', type=int, default=200,
+            '--k', dest='nmeasures', type=int, default=100,
             help='specify the number of times population size needs to be measured'
         )
         parser.add_argument(

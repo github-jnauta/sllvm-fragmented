@@ -23,7 +23,7 @@ import src.lattice
 ###################
 # Numba functions #
 # --------------- #
-# General functions
+# General methods
 @numba.jit(nopython=True, cache=True)
 def nb_set_seed(seed):
     """ Specifically call the seed from Numba code, as calling numpy.random.seed()
@@ -32,14 +32,7 @@ def nb_set_seed(seed):
     """
     np.random.seed(seed)
 
-@numba.jit(nopython=True, cache=True)
-def nb_sample_cdf(cdf):
-    """ Generate sample from given (discrete) cdf """
-    rand = np.random.random() 
-    for i in range(len(cdf)):
-        if rand < cdf[i]:
-            return i + 1
-
+# Specialized methods
 @numba.jit(nopython=True, cache=True)
 def nb_sample_powlaw_discrete(P, xmin=1):
     """ Generate discrete sample from the truncated power law distribution 
@@ -89,11 +82,13 @@ def nb_get_1D_neighbors(idx, L):
     neighbors_1D = np.array([n[0]*L + n[1] for n in neighbors], dtype=np.int64)
     return neighbors_1D
 
+## Main function
 # @profile
 @numba.jit(nopython=True, cache=True)
 def nb_SLLVM(
-        T, N0, M0, sites, mu, lambda_, Lambda_, sigma, alpha, P, nmeasures, bins,
-        visualize, xmin=1
+        T, N0, M0, sites, reduced_sites, mu, lambda_, Lambda_, sigma, alpha, P, P_reduced,
+        sites_patch_dict, reduced_sites_patch_dict,
+        nmeasures, bins, visualize, xmin=1, reduce=True
     ):
     """ Runs the stochastic lattice Lotka-Volterra model
         While the lattice is a 2D (square) lattice, we first convert everyting to a 
@@ -135,6 +130,10 @@ def nb_SLLVM(
         P : np.array(xmax-xmin, dtype=np.float64)
             The complementary cumulative distribution function of the flight lengths
             which are power law distributed variables
+        sites_patch_dict : dict(types.int64 : np.array([], dtype=np.int64))
+            A list of arrays that contains indices of the seperate patches of the lattice
+        reduced_sites_patch_dict : dict(types.int64 : np.array([], dtype=np.int64))
+            A list of arrays that contains indices of the seperate patches of the reduced lattice
         bins : np.array(nbins, dtype=np.int64)
             The (log-spaced) bins for determining the distribution over flight lengths
         nmeasures : np.int64
@@ -148,16 +147,18 @@ def nb_SLLVM(
     L, _ = sites.shape              # Size of LxL lattice
     rho = np.sum(sites) / L**2      # Habitat density
     dmeas = T // nmeasures          # Δt at which measurements need to be collected
+    treduce = T // 2                # Time at which habitat will be reduced
     _nn = 4                         # Number of nearest neighbors
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
-    N0 = np.int64(rho/3*L**2) if N0 == -1 else N0         # Initial number of predators
+    N0 = np.int64(L**2/10) if N0 == -1 else N0  # Initial number of predators
 
     ## Initialize constants
     delta_idx_2D = [[0,1], [0,-1], [1,0], [-1,0]]
 
     ## Convert the eligible sites to 1D array
     sites = sites.flatten()
+    reduced_sites = reduced_sites.flatten()
     ## Initialize the 1-dimensional lattices
     #  We need three lattices:
     #  * one lattice of integer type that contains the IDs of the predators
@@ -168,10 +169,8 @@ def nb_SLLVM(
     not_counted_lattice = np.zeros(L*L, dtype=np.bool_)
 
     ## Distribute prey on eligible sites
-    prey_sites = np.where(sites==1)[0]
-    M0 = min(M0, np.int64(rho/2*L**2))
-    if M0 == -1:
-        M0 = N0 if rho==1 else np.int64(rho/3*L**2)
+    prey_sites = np.flatnonzero(sites==1)
+    M0 = N0 if M0 == -1 else M0 
     prey_idxs = np.random.choice(prey_sites, size=M0, replace=False)
     for i in prey_idxs:
         prey_lattice[i] = True 
@@ -190,7 +189,10 @@ def nb_SLLVM(
     flight_length = [i for i in gen]    # Sampled flight length of individual predators
     curr_length = [0 for i in gen]      # Current path length of individual predators
     didx = [0 for i in gen]             # Current direction of individual predators
+    Lambda_lst = [1. for i in gen]      # Detection probability of predator
     current_max_id = N0 + 1
+    ## Allocate other lists
+    empty_labels = [np.int64(i) for i in range(0)]
 
     ## Initialize
     N = N0          # Number of predators       
@@ -200,6 +202,9 @@ def nb_SLLVM(
     ## Allocate arrays for storing measures
     prey_population = np.zeros(nmeasures+1, dtype=np.int64)
     pred_population = np.zeros(nmeasures+1, dtype=np.int64)
+    habitat_efficiency = np.zeros(nmeasures+1, dtype=np.int64)
+    predators_on_habitat = np.zeros(nmeasures+1, dtype=np.int64)
+    isolated_patches = np.zeros(nmeasures+1, dtype=np.int64)
     coexistence = 1
     ## Allocate logaritmically spaced bins for flight length distribution
     flight_lengths = np.zeros(len(bins)-1, dtype=np.int32)
@@ -207,6 +212,15 @@ def nb_SLLVM(
     # Store initial values
     prey_population[0] = M0 
     pred_population[0] = N0 
+    habitat_efficiency[0] = np.count_nonzero((pred_lattice+prey_lattice)[sites])
+    predators_on_habitat[0] = np.count_nonzero(pred_lattice[sites])
+    sites_patchlabels = [label for label in sites_patch_dict]
+    for label in sites_patch_dict:
+        patch_indices = sites_patch_dict[label]
+        if label not in empty_labels and not np.any(prey_lattice[patch_indices]):
+            isolated_patches[0] += len(patch_indices)
+            empty_labels.append(label)
+
     # Allocate and initialice lattice configuration if visualize flag is given
     lattice_configuration = np.zeros((L*L, nmeasures+1), dtype=np.int16)
     if visualize:
@@ -220,8 +234,23 @@ def nb_SLLVM(
         ## Store desired variables every dmeas timesteps
         if t % dmeas == 0:
             imeas = t // dmeas
+            # Store prey and predator population
             prey_population[imeas] = M 
             pred_population[imeas] = N
+            # Store habitat efficiency
+            habitat_efficiency[imeas] = np.count_nonzero((pred_lattice+prey_lattice)[sites])
+            predators_on_habitat[imeas] = np.count_nonzero(pred_lattice[sites])
+            # Store the number of isolated (dead) patches
+            for i, label in enumerate(sites_patchlabels):
+                patch_indices = sites_patch_dict[label]
+                if label not in empty_labels and not np.any(prey_lattice[patch_indices]):
+                    isolated_patches[imeas] += len(patch_indices)
+                    # Do not count in future computations, as once a patch is depleted
+                    # it will (and should) never become rehabitated.
+                    empty_labels.append(label)
+                    # sites_patchlabels[i], sites_patchlabels[-1] = sites_patchlabels[-1], sites_patchlabels[i]
+                    # del sites_patchlabels[-1]
+            # Store the lattice configuration
             if visualize:
                 lattice_configuration[sites>0,imeas] = 1
                 lattice_configuration[prey_lattice,imeas] = -1 
@@ -237,7 +266,30 @@ def nb_SLLVM(
             coexistence = 0
             prey_population[imeas:] = np.sum(sites)
             break 
-        
+
+        ## Decrease the number of habitable sites halfway through the simulation
+        if reduce == True and t == treduce:
+            # Loop through all prey and kill them if the site is now inhabitable
+            for i in np.flatnonzero(prey_lattice):
+                if reduced_sites[i] == 0:
+                    prey_lattice[i] = False
+                    M -= 1
+            # Ensure that the new eligible sites are the reduced ones
+            sites = reduced_sites 
+            sites_patch_dict = reduced_sites_patch_dict
+            sites_patchlabels = [label for label in sites_patch_dict]
+            empty_labels = [np.int64(i) for i in range(0)]
+            # Recompute list of occupied sites
+            prey_idxs = np.flatnonzero(prey_lattice)
+            pred_idxs = np.flatnonzero(pred_lattice)
+            occupied_sites = [idx for idx in prey_idxs] + [idx for idx in pred_idxs]  
+            # Disregard all not counted sites          
+            not_counted_lattice = np.zeros(L*L, dtype=np.bool_)
+            # Reset number of occupied sites
+            K = N + M 
+            # Reconfigure the complementary CDF, as predators will now be sampling with α
+            P = P_reduced
+
         # Generate random numbers in bulk
         steps = K 
         randoms = np.random.random(steps)
@@ -315,6 +367,9 @@ def nb_SLLVM(
                         # Sample new flight length
                         flight_length[_pred_id] = nb_sample_powlaw_discrete(P, xmin)
                         didx[_pred_id] = np.random.randint(0,4)
+                        # Update detection probability
+                        if Lambda_ == -1:
+                            Lambda_lst[_pred_id] = 1 / flight_length[_pred_id]
                     
                     ## (iii) continue the current (or just started) flight
                     # Determine new 1D index using periodic boundary conditions
@@ -332,22 +387,22 @@ def nb_SLLVM(
                     else:
                         # Increment current path length
                         curr_length[_pred_id] += 1
-
                         ## (iv) interact with prey        
                         if prey_lattice[new_idx]:
                             _r = np.random.random()
                             ## (iv)(a) do not interact with prey with probability 1-Λ
-                            if _r < 1 - Lambda_:                                
+                            if _r < 1 - Lambda_lst[_pred_id]:                                
                                 # Update predator lattice
                                 pred_lattice[new_idx] = pred_lattice[idx]
                                 pred_lattice[idx] = 0 
                                 occupied_sites[_k] = new_idx
                             ## (iv)(b) reproduce onto the prey site with probability Λ*λ 
-                            elif 1-Lambda_ < _r <  1-Lambda_+Lambda_*lambda_:
+                            elif 1-Lambda_lst[_pred_id] < _r <  1-Lambda_lst[_pred_id]+Lambda_lst[_pred_id]*lambda_:
                                 # Append new predator to appropriate lists
                                 flight_length.append(0)         # Reset its flight length
                                 curr_length.append(0) 
                                 didx.append(0)
+                                Lambda_lst.append(1.)
                                 # Update predator lattice
                                 pred_lattice[new_idx] = current_max_id
                                 current_max_id += 1
@@ -404,10 +459,9 @@ def nb_SLLVM(
                             if curr_length[_pred_id] < np.max(bins):
                                 bin = np.searchsorted(bins, curr_length[_pred_id])
                                 flight_lengths[bin] += 1
-                                # print(bin, bins, curr_length[_pred_id]); exit()
-                            curr_length[_pred_id] = 0 
-
-    return prey_population, pred_population, coexistence, flight_lengths, lattice_configuration
+                            curr_length[_pred_id] = 0
+    
+    return prey_population, pred_population, coexistence, flight_lengths, habitat_efficiency, predators_on_habitat, isolated_patches, lattice_configuration
 
 #################################
 # Wrapper for the numba modules #
@@ -421,11 +475,12 @@ class SLLVM(object):
 
     def run_system(self, args, xmin=1, xmax=None):
         # Compute the prey (resource) sites on the L x L lattice
-        if args.rho == 1:
-            sites = np.ones((2**args.m, 2**args.m), dtype=np.int64)
-        else:
-            _lattice = self.Lattice.SpectralSynthesis2D(2**args.m, args.H)
-            sites = self.Lattice.binary_lattice(_lattice, args.rho)
+        _lattice = self.Lattice.SpectralSynthesis2D(2**args.m, args.H)
+        sites = self.Lattice.binary_lattice(_lattice, args.rho)
+        reduced_sites = self.Lattice.binary_lattice(_lattice, args.rho/5)
+        # Gather indices of the seperate patches of the habitable patches
+        sites_patch_dict, num_patches = self.Lattice.label(sites)
+        reduced_sites_patch_dict, num_reduced_patches = self.Lattice.label(reduced_sites)
         # Compute maximum flight length 
         xmax = 5*2**args.m if not xmax else xmax 
         xmax_measure = 2*2**args.m if not xmax else xmax 
@@ -433,19 +488,18 @@ class SLLVM(object):
         bins = np.logspace(np.log10(xmin), np.log10(xmax_measure), num=args.nbins, dtype=np.int64)
         bins = np.unique(bins)
         # Pre-compute the Riemann zeta function for sampling of discrete power law variables
-        flightlengths = np.arange(xmin, xmax)
-        if args.alpha == -1:
-            P = np.zeros(len(flightlengths))
-            P[0] = 1. 
-        else:
-            norm = zeta(args.alpha, xmin) - zeta(args.alpha, xmax)
-            P = (zeta(args.alpha, flightlengths) - zeta(args.alpha, xmax))/norm 
+        flightlengths = np.arange(xmin, xmax)        
+        P = np.zeros(len(flightlengths))
+        P[0] = 1.
+        norm = zeta(args.alpha, xmin) - zeta(args.alpha, xmax)
+        P_reduced = (zeta(args.alpha, flightlengths) - zeta(args.alpha, xmax))/norm 
         # Initialize dictionary
         outdict = {}
         # Run 
         output = nb_SLLVM(
-            args.T, args.N0, args.M0, sites, 
-            args.mu, args.lambda_, args.Lambda_, args.sigma, args.alpha, P,
+            args.T, args.N0, args.M0, sites, reduced_sites,
+            args.mu, args.lambda_, args.Lambda_, args.sigma, args.alpha, P, P_reduced,
+            sites_patch_dict, reduced_sites_patch_dict,
             args.nmeasures, bins, args.visualize
         )
         # Save
@@ -453,9 +507,13 @@ class SLLVM(object):
         outdict['pred_population'] = output[1]
         outdict['coexistence'] = output[2]
         outdict['flight_lengths'] = output[3]
+        outdict['habitat_efficiency'] = output[4]
+        outdict['predators_on_habitat'] = output[5]
+        outdict['isolated_patches'] = output[6]
+        outdict['num_patches'] = num_patches
+        outdict['num_reduced_patches'] = num_reduced_patches
         if args.visualize:
-            outdict['sites'] = sites 
-            outdict['lattice'] = output[4]
+            outdict['lattice'] = output[-1]
         return outdict
 
     
