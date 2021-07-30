@@ -88,7 +88,7 @@ def nb_get_1D_neighbors(idx, L):
 def nb_SLLVM(
         T, N0, M0, sites, reduced_sites, mu, lambda_, Lambda_, sigma, alpha, P, 
         sites_patch_dict, reduced_sites_patch_dict,
-        nmeasures, bins, visualize, xmin=1, reduce=True
+        nmeasures, bins, visualize, xmin=1, reduce=False
     ):
     """ Runs the stochastic lattice Lotka-Volterra model
         While the lattice is a 2D (square) lattice, we first convert everyting to a 
@@ -172,7 +172,7 @@ def nb_SLLVM(
     prey_sites = np.flatnonzero(sites==1)
     M0 = min(M0, np.int64(L**2/10))
     if M0 == -1:
-        M0 = N0 if rho==1 else np.int64(L**2/6)
+        M0 = N0 if rho==1 else np.int64(L**2/10)
     prey_idxs = np.random.choice(prey_sites, size=M0, replace=False)
     for i in prey_idxs:
         prey_lattice[i] = True 

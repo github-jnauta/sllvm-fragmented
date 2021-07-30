@@ -45,7 +45,7 @@ class Args():
             help='specify predator reproduction rate λ'
         )
         parser.add_argument(
-            '--Lambda', dest='Lambda_', type=float, default=1,
+            '--Lambda', dest='Lambda_', type=float, default=-1,
             help='specify predator-prey interaction rate Λ'
         )
         parser.add_argument(
@@ -58,7 +58,7 @@ class Args():
         )
         ## Numerical variables
         parser.add_argument(
-            '--T', dest='T', type=int, default=10000, help='number of Monte-Carlo steps'
+            '--T', dest='T', type=int, default=5000, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
             '--k', dest='nmeasures', type=int, default=100,
@@ -96,7 +96,7 @@ class Args():
         )
         ## Analysis variables
         parser.add_argument(
-            '--arg', dest='argument', type=str, default='evolution',
+            '--arg', dest='argument', type=str, default='lambda',
             help='specify name of argument "x" for which "f(x)" is computed'
         )
         # Parse arguments
