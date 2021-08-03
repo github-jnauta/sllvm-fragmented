@@ -60,17 +60,18 @@ seeds=$(seq 1 1 $NSEEDS)
 alpha=(-1)
 #alpha=$(seq 1.1 0.1 3.0)
 #H=$(seq 0.1 0.1 0.9)
-H=(0.1)
+H=(1)
 rho=(1)
-python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,0,35), fmt="%.4e")'
+#python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,0,35), fmt="%.4e")'
 #Lambda=(1)
+lambda=(0.001 0.013 0.025 0.075 0.1 0.2)
 mkdir -p $DATADIR
 echo "${seeds[@]}" > $DATADIR/seeds.txt
 echo "${alpha[@]}" > $DATADIR/alpha.txt
 echo "${H[@]}" > $DATADIR/H.txt
 echo "${rho[@]}" > $DATADIR/rho.txt
 #echo "${Lambda[@]}" > $DATADIR/Lambda.txt
-mapfile -t lambda < lambda.txt; mv lambda.txt $DATADIR
+#mapfile -t lambda < lambda.txt; mv lambda.txt $DATADIR
 
 if [ $SSH ]; then 
     ## EXECUTE Python script in parallel on all available CPU threads

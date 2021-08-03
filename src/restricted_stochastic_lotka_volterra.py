@@ -151,7 +151,7 @@ def nb_SLLVM(
     _nn = 4                         # Number of nearest neighbors
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
-    N0 = np.int64(L**2/10) if N0 == -1 else N0  # Initial number of predators
+    N0 = np.int64(0.2*L**2) if N0 == -1 else N0  # Initial number of predators
 
     ## Initialize constants
     delta_idx_2D = [[0,1], [0,-1], [1,0], [-1,0]]

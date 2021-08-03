@@ -142,7 +142,7 @@ class Analyzer():
             suffix = self._suffix.format(seed=seed)
             N[:,i] = np.load(self._dir+f'pred_population{suffix}.npy')
             M[:,i] = np.load(self._dir+f'prey_population{suffix}.npy')
-            ph[:,i] = np.load(self._dir+f'predators_on_habitat{suffix}.npy') / N[:,i]
+            _ph = np.ma.divide(np.load(self._dir+f'predators_on_habitat{suffix}.npy'), N[:,i]).filled(0)
             I = np.load(self._dir+f'isolated_patches{suffix}.npy').astype(float)
             I = np.cumsum(I)
             I[:args.nmeasures//2+1] /= (args.rho * L**2)
@@ -163,8 +163,8 @@ if __name__ == "__main__":
     args = Argus.args 
     Analyze = Analyzer() 
     # Analyze
-    Analyze.compute_population_densities(args)
-    # Analyze.compute_density_evolution(args)
+    # Analyze.compute_population_densities(args)
+    Analyze.compute_density_evolution(args)
     
 
     
