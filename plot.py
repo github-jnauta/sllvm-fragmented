@@ -82,8 +82,9 @@ class Plotter():
             ax.set_yticklabels([r"0", r"L"], fontsize=14)
             ax.xaxis.tick_top()
             ax.text(
-                0.95, 0.1, r"H={:.2f}".format(_H[i]), transform=ax.transAxes,
-                ha='right', fontsize=14, bbox=dict(boxstyle="round", ec='none', fc='white')
+                0.05, 0.95, r"H={:.2f}".format(_H[i]), transform=ax.transAxes, 
+                ha='left', va='top', fontsize=14, 
+                bbox=dict(boxstyle="round", ec='none', fc='white')
             )
         # Store
         self.figdict["example_lattices"] = fig 
@@ -424,12 +425,12 @@ class Plotter():
         # Specify directories
         _rdir = args.rdir+"sllvm/evolution/{L:d}x{L:d}/".format(L=L)
         # Initialize figure
-        fig, axes = plt.subplots(1, 2, figsize=(7,3.5), tight_layout=True)
-        # axin = axes[0].inset_axes((0.5, 0.05, 0.4, 0.4))
+        fig, axes = plt.subplots(2, 1, figsize=(3.25, 6), tight_layout=True)
+        axin = axes[0].inset_axes((0.55, 0.45, 0.38, 0.38))
         # Define time axis
         t = args.T / args.nmeasures * np.arange(args.nmeasures+1)
         # Load data
-        lambda_arr = [0.013]
+        lambda_arr = [0.001, 0.013, 0.1]
         for i, lambda_ in enumerate(lambda_arr):
             suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_' \
                 'Lambda{:.4f}_lambda{:.4f}_alpha{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
@@ -440,22 +441,35 @@ class Plotter():
             _M = np.load(_rdir+f'M{suffix}.npy') / (args.rho*L**2)
             N, M = np.mean(_N, axis=1), np.mean(_M, axis=1)
             # Plot population densities
-            axes[0].plot(t, N, color='k', linewidth=0.85, label=r'$N(t)$')
-            axes[0].plot(t, M, color='navy', linewidth=0.85, label=r'$M(t)$')
+            axes[0].plot(t, N, color=colors[i], linewidth=0.85, label=r'$\lambda=%.3f$'%(lambda_))
+            axes[0].plot(t, M, color=colors[i], linestyle='--', linewidth=0.85)
+            axin.plot(t, N, color=colors[i], linewidth=0.85)
             # Plot phase plot
-            axes[1].plot(N, M, color='k', linewidth=0.85)
+            axes[1].plot(N, M, color=colors[i], linewidth=0.85, label=r'$\lambda=%.3f$'%(lambda_))
         # Limits, labels, etc
         axes[0].set_xlim(0, args.T)
         axes[0].set_ylim(bottom=0)
         axes[0].set_xlabel(r'$t$', fontsize=16)
         axes[0].set_ylabel(r'$N(t)$, $M(t)$', fontsize=16)
-        axes[0].legend(loc='upper right', fontsize=15, frameon=False)
-        axes[1].set_xlim(0, 1)
+        axin.set_xlim(0, 2e3)
+        axin.set_ylim(0,0.25)
+        rect, patches = axes[0].indicate_inset_zoom(axin, ec='k', alpha=1, linewidth=0.5)
+        for patch in patches:
+            patch.set(linewidth=0.5, color='k', alpha=0.5)
+        axes[1].legend(
+            loc='upper right', fontsize=14, frameon=False, borderaxespad=0.2,
+            handlelength=1, handletextpad=0.4, labelspacing=0.2
+        )
+        axes[1].set_xlim(0, 0.3)
         axes[1].set_ylim(0, 1)
         axes[1].set_xlabel(r'$N$', fontsize=16)
         axes[1].set_ylabel(r'$M$', fontsize=16)
+        for i, ax in enumerate(axes):
+            ax.text(
+                0.0, 1.05, figlabels[i], fontsize=14, ha='center', transform=ax.transAxes
+            )
         # Save
-        self.figdict["population_densities"] = fig 
+        self.figdict[f'population_densities_rho{args.rho}'] = fig 
 
     def plot_population_densities_alpha(self, args):
         """ Plot quasistationary population densities as a function of α,
@@ -704,13 +718,12 @@ if __name__ == "__main__":
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
     # Pjotr.plot_lattice_evolution(args)
-    # Pjotr.plot_lattice_initial(args)
-    # Pjotr.plot_fragmented_lattice(args)
+    Pjotr.plot_fragmented_lattice(args)
     # Pjotr.plot_patch_distribution(args)
 
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
-    Pjotr.plot_population_densities(args)
+    # Pjotr.plot_population_densities(args)
     # Pjotr.plot_population_densities_alpha(args)
     # Pjotr.plot_population_densities_lambda(args)
     # Pjotr.plot_population_phase_space(args)
