@@ -333,25 +333,33 @@ class Plotter():
     def plot_population_dynamics(self, args):
         L = 2**args.m        
         _dir = args.rdir+'sllvm/evolution/'
-        _rdir = args.rdir+'sllvm/evolution/{L:d}x{L:d}/'.format(L=L)
+        _rdir = args.ddir+'sllvm/evolution/{L:d}x{L:d}/'.format(L=L)
         # Load variables
         H_arr = np.loadtxt(_dir+'H.txt')
         xax = args.T / args.nmeasures * np.arange(args.nmeasures+1)
         # Initialize figure
         fig, axes = plt.subplots(1,2, figsize=(7,3.5/4*3), tight_layout=True)
         axin = axes[0].inset_axes([0.57,0.6,0.35,0.35])
+        # pred_population_T5000_N-1_M-1_H0.010_rho0.200_Lambda-1.0000_lambda0.0130_alpha2.0000_mu-1.0000_sigma0.2000_seed1
+        # pred_population_T5000_N-1_M-1_H0.900_rho0.200_mu-1.0000_Lambda-1.0000_lambda0.0130_sig0.2000_a2.000_seed1
         # Plot
         for i, H in enumerate(H_arr):
-            suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_' \
-                'Lambda{:.4f}_lambda{:.4f}_alpha{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
-                args.T, args.N0, args.M0, H,
-                args.rho, args.Lambda_, args.lambda_, args.alpha, args.mu, args.sigma
+            suffix = (
+                '_T{:d}_N{:d}_M{:d}_H{:.3f}'
+                '_rho{:.3f}_mu{:.4f}_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}'
+                '_seed{:d}'.format(
+                    args.T, args.N0, args.M0, H, args.rho, 
+                    args.mu, args.Lambda_, args.lambda_, args.sigma, args.alpha,
+                    args.seed
+                )
             )
             # Plot population density
-            _N = np.load(_rdir+"N%s.npy"%(suffix)) 
-            _M = np.load(_rdir+"M%s.npy"%(suffix)) 
-            N = np.mean(_N, axis=1) / L**2
-            M = np.mean(_M, axis=1) / L**2
+            _N = np.load(_rdir+"pred_population%s.npy"%(suffix)) 
+            _M = np.load(_rdir+"prey_population%s.npy"%(suffix)) 
+            N = _N / L**2 
+            M = _M / L**2
+            # N = np.mean(_N, axis=1) / L**2
+            # M = np.mean(_M, axis=1) / L**2
             axes[0].plot(
                 xax, N, color=colors[i], linewidth=0.85, label=r'$H=%.2f$'%(H)
             )
@@ -359,17 +367,17 @@ class Plotter():
                 xax, M, color=colors[i], linestyle='--', linewidth=0.85
             )
             # Plot predators on habitat
-            _ph = np.load(_rdir+"ph%s.npy"%(suffix))
-            ph = np.mean(_ph, axis=1)
-            axin.plot(
-                xax, ph, color=colors[i], linewidth=0.85
-            )
-            # Plot habitat efficiency
-            _etah = np.load(_rdir+"etah%s.npy"%(suffix))
-            etah = np.mean(_etah, axis=1)
-            axes[1].plot(
-                xax, etah, color=colors[i], linewidth=0.85, label=r'$H=%.2f$'%(H)
-            )
+            # _ph = np.load(_rdir+"ph%s.npy"%(suffix))
+            # ph = np.mean(_ph, axis=1)
+            # axin.plot(
+            #     xax, ph, color=colors[i], linewidth=0.85
+            # )
+            # # Plot habitat efficiency
+            # _etah = np.load(_rdir+"etah%s.npy"%(suffix))
+            # etah = np.mean(_etah, axis=1)
+            # axes[1].plot(
+            #     xax, etah, color=colors[i], linewidth=0.85, label=r'$H=%.2f$'%(H)
+            # )
         # Limits, labels, etc
         ylabels = [r"population", r"$\eta_h$"]
         for i, ax in enumerate(axes):
@@ -702,9 +710,9 @@ if __name__ == "__main__":
     # Pjotr.plot_patch_distribution(args)
 
     ## Population density related plots
-    # Pjotr.plot_population_dynamics(args)
+    Pjotr.plot_population_dynamics(args)
     # Pjotr.plot_population_densities(args)
-    Pjotr.plot_population_densities_alpha(args)
+    # Pjotr.plot_population_densities_alpha(args)
     # Pjotr.plot_population_densities_lambda(args)
     # Pjotr.plot_population_phase_space(args)
 

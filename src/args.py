@@ -17,10 +17,10 @@ class Args():
             help='standard deviation of the Gaussian distribution'
         )
         parser.add_argument(
-            '--H', dest='H', type=float, default=1, help='Hurst exponent'
+            '--H', dest='H', type=float, default=0.5, help='Hurst exponent'
         )
         parser.add_argument(
-            '--rho', dest='rho', type=float, default=1, help='level of occupancy'
+            '--rho', dest='rho', type=float, default=0.2, help='level of occupancy'
         )
         parser.add_argument(
             '--M0', dest='M0', type=int, default=-1, 

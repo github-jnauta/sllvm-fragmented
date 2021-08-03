@@ -146,12 +146,12 @@ def nb_SLLVM(
     # Specify some variables
     L, _ = sites.shape              # Size of LxL lattice
     rho = np.sum(sites) / L**2      # Habitat density
-    dmeas = T // nmeasures          # Δt at which measurements need to be collected
+    dmeas = T // (nmeasures -1)     # Δt at which measurements need to be collected
     treduce = T // 2                # Time at which habitat will be reduced
     _nn = 4                         # Number of nearest neighbors
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
-    N0 = np.int64(0.2*L**2) if N0 == -1 else N0  # Initial number of predators
+    N0 = np.int64(rho/5*L**2) if N0 == -1 else N0 # Initial number of predators
 
     ## Initialize constants
     delta_idx_2D = [[0,1], [0,-1], [1,0], [-1,0]]
