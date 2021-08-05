@@ -17,6 +17,7 @@ class Analyzer():
         L = 2**args.m
         # Determine directory inputs
         self._dir = args.ddir+'sllvm/{arg:s}/{L:d}x{L:d}/'.format(arg=args.argument, L=L)
+        self._ddir = self._dir+'H{H:.3f}/'.format(H=args.H)
         self._rdir = args.rdir+'sllvm/{name:s}/{L:d}x{L:d}/'.format(name=args.argument, L=L)
         # Make directory if it does not exist
         if not os.path.exists(self._rdir):
@@ -46,7 +47,7 @@ class Analyzer():
                 )
             )
             self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}' \
-                'Lambda{:.4f}_alpha{:.3f}_mu{:.4f}_sigma{:.4f}'.format(
+                '_Lambda{:.4f}_alpha{:.3f}_mu{:.4f}_sigma{:.4f}'.format(
                 args.T, args.N0, args.M0, args.H,
                 args.rho, args.Lambda_, args.alpha, args.mu, args.sigma
             )
@@ -115,11 +116,14 @@ class Analyzer():
         for i, var in enumerate(self._var_arr):
             for j, seed in enumerate(seeds):
                 suffix = self._suffix.format(var=var, seed=seed)
-                _N = np.load(self._dir+"pred_population{suffix:s}.npy".format(suffix=suffix))
-                _M = np.load(self._dir+"prey_population{suffix:s}.npy".format(suffix=suffix))
+                print(suffix); exit()
+                _N = np.load(self._ddir+"pred_population{suffix:s}.npy".format(suffix=suffix))
+                _M = np.load(self._ddir+"prey_population{suffix:s}.npy".format(suffix=suffix))
                 N[i,j] = np.mean(_N[-25:])
                 M[i,j] = np.mean(_M[-25:])
         # Save
+        print(np.mean(N, axis=1))
+        print(self.save_suffix)
         np.save(self._rdir+"N{suffix:s}".format(suffix=self.save_suffix), N)
         np.save(self._rdir+"M{suffix:s}".format(suffix=self.save_suffix), M)
         # Print closing statements
@@ -163,8 +167,8 @@ if __name__ == "__main__":
     args = Argus.args 
     Analyze = Analyzer() 
     # Analyze
-    # Analyze.compute_population_densities(args)
-    Analyze.compute_density_evolution(args)
+    Analyze.compute_population_densities(args)
+    # Analyze.compute_density_evolution(args)
     
 
     

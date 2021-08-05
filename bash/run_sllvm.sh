@@ -24,8 +24,8 @@ while [[ $# -gt 0 ]]
     esac 
 done 
 # Specify action
-DISTRIBUTE=true         # Distribute code among nodes, if using -ssh
-EXECUTE=true            # Run the code in parallel using GNU parallel
+DISTRIBUTE=false         # Distribute code among nodes, if using -ssh
+EXECUTE=false            # Run the code in parallel using GNU parallel
 GETDATA=true            # Retrieve data from the modes through rsync
 
 ## Extract variables
@@ -57,21 +57,20 @@ fi
 ## DEFINE variables and sequences
 #  Additionally store these variables in files for later use (e.g. analysis, plotting)
 seeds=$(seq 1 1 $NSEEDS)
-alpha=(-1)
-#alpha=$(seq 1.1 0.1 3.0)
+alpha=$(seq 1.1 0.1 3.0)
 #H=$(seq 0.1 0.1 0.9)
-H=(1)
-rho=(1)
-#python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,0,35), fmt="%.4e")'
+H=(0.01 0.1 0.2 0.5 0.9)
+rho=(0.2)
+python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,0,35), fmt="%.4e")'
 #Lambda=(1)
-lambda=(0.001 0.013 0.025 0.075 0.1 0.2)
+#lambda=(0.001 0.013 0.025 0.075 0.1 0.2)
 mkdir -p $DATADIR
 echo "${seeds[@]}" > $DATADIR/seeds.txt
 echo "${alpha[@]}" > $DATADIR/alpha.txt
 echo "${H[@]}" > $DATADIR/H.txt
 echo "${rho[@]}" > $DATADIR/rho.txt
 #echo "${Lambda[@]}" > $DATADIR/Lambda.txt
-#mapfile -t lambda < lambda.txt; mv lambda.txt $DATADIR
+mapfile -t lambda < lambda.txt; mv lambda.txt $DATADIR
 
 if [ $SSH ]; then 
     ## EXECUTE Python script in parallel on all available CPU threads
@@ -86,7 +85,7 @@ if [ $SSH ]; then
     if $GETDATA; then 
         for node in ${noboss_nodes[@]}; do 
             echo $node; 
-            rsync -avz --include='*Lambda-1*.npy' --exclude='*' $node:${DATADIR} ${DATADIR}/
+            rsync --inplace -avz --include='*Lambda-1*.npy' --exclude='*' $node:${DATADIR} ${DATADIR}/
         done 
     fi
 fi 
