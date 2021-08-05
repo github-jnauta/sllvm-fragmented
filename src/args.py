@@ -41,7 +41,7 @@ class Args():
             help='specify predator mortality rate'
         )
         parser.add_argument(
-            '--lambda', dest='lambda_', type=float, default=0.013,
+            '--lambda', dest='lambda_', type=float, default=0.05,
             help='specify predator reproduction rate λ'
         )
         parser.add_argument(

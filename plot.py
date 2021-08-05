@@ -339,7 +339,7 @@ class Plotter():
         xax = args.T / args.nmeasures * np.arange(args.nmeasures+1)
         # Initialize figure
         fig, axes = plt.subplots(1,2, figsize=(7,3.5/4*3), tight_layout=True)
-        axin = axes[0].inset_axes([0.57,0.6,0.35,0.35])
+        # axin = axes[0].inset_axes([0.57,0.6,0.35,0.35])
         # pred_population_T5000_N-1_M-1_H0.010_rho0.200_Lambda-1.0000_lambda0.0130_alpha2.0000_mu-1.0000_sigma0.2000_seed1
         # pred_population_T5000_N-1_M-1_H0.900_rho0.200_mu-1.0000_Lambda-1.0000_lambda0.0130_sig0.2000_a2.000_seed1
         # Plot
@@ -366,6 +366,10 @@ class Plotter():
             axes[0].plot(
                 xax, M, color=colors[i], linestyle='--', linewidth=0.85
             )
+            D = (Plotter.true_diversity(N, M)-1)*(N+M)
+            axes[1].plot(
+                xax, D, color=colors[i], linestyle='--', linewidth=0.85
+            )
             # Plot predators on habitat
             # _ph = np.load(_rdir+"ph%s.npy"%(suffix))
             # ph = np.mean(_ph, axis=1)
@@ -384,18 +388,18 @@ class Plotter():
             ax.set_xlim(0, args.T)
             if i == 0:
                 ax.set_ylim(0,0.25)
+                ax.legend(
+                    loc='upper right', ncol=2, fontsize=11, handlelength=1, handletextpad=0.4,
+                    borderaxespad=0.1, columnspacing=0.2, labelspacing=0.2, frameon=False
+                )
             else:
                 ax.set_ylim(0,1.05)
-                ax.legend(
-                    loc='lower left', fontsize=14, handlelength=1, handletextpad=0.4,
-                    borderaxespad=0.1, labelspacing=0.2, frameon=False
-                )
             ax.set_xlabel(r"$t$", fontsize=16)
             ax.set_ylabel(ylabels[i], fontsize=16)
-        axin.set_xlim(0, args.T)
-        axin.set_ylim(0,1.05)
-        axin.set_xlabel(r"$t$", fontsize=12)
-        axin.set_ylabel(r"$p_h$", fontsize=12)
+        # axin.set_xlim(0, args.T)
+        # axin.set_ylim(0,1.05)
+        # axin.set_xlabel(r"$t$", fontsize=12)
+        # axin.set_ylabel(r"$p_h$", fontsize=12)
 
     def plot_population_phase_space(self, args):
         L = 2**args.m 
@@ -560,26 +564,24 @@ class Plotter():
         _dir = args.rdir+'sllvm/lambda/'
         _rdir = args.rdir+'sllvm/lambda/{L:d}x{L:d}/'.format(L=L)
         # Load variables
-        # lambda_arr = np.loadtxt(_dir+'lambda.txt')
-        lambda_arr = np.logspace(-3,0,25)
+        lambda_arr = np.loadtxt(_dir+'lambda.txt')
         H_arr = np.loadtxt(_dir+'H.txt')
-        # alpha_arr = np.loadtxt(_dir+'alpha.txt')
-        # Lambda_arr = np.loadtxt(_dir+'Lambda.txt')
         # Initialize figure
         fig, axes = plt.subplots(1,3, figsize=(12,3), tight_layout=True)
         # Load data & plot
         for i, H in enumerate(H_arr):
-        # for i, alpha in enumerate(alpha_arr):
             # Load data
             suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}' \
-                'Lambda{:.4f}_alpha{:.3f}_mu{:.4f}_sigma{:.4f}'.format(
+                '_Lambda{:.4f}_alpha{:.3f}_mu{:.4f}_sigma{:.4f}'.format(
                 args.T, args.N0, args.M0, H,
                 args.rho, args.Lambda_, args.alpha, args.mu, args.sigma
             )
+            print(H, args.alpha)
             _N = np.load(_rdir+'N{:s}.npy'.format(suffix))
             _M = np.load(_rdir+'M{:s}.npy'.format(suffix))
             N = np.mean(_N, axis=1) / L**2
             M = np.mean(_M, axis=1) / L**2
+            print(N); exit()
             # Plot
             axes[0].semilogx(
                 lambda_arr, N, color=colors[i], marker=markers[i], mfc='white',
@@ -710,10 +712,10 @@ if __name__ == "__main__":
     # Pjotr.plot_patch_distribution(args)
 
     ## Population density related plots
-    Pjotr.plot_population_dynamics(args)
+    # Pjotr.plot_population_dynamics(args)
     # Pjotr.plot_population_densities(args)
     # Pjotr.plot_population_densities_alpha(args)
-    # Pjotr.plot_population_densities_lambda(args)
+    Pjotr.plot_population_densities_lambda(args)
     # Pjotr.plot_population_phase_space(args)
 
     ## Flight length related plots

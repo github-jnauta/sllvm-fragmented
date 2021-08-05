@@ -151,7 +151,9 @@ def nb_SLLVM(
     _nn = 4                         # Number of nearest neighbors
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
-    N0 = np.int64(rho/5*L**2) if N0 == -1 else N0 # Initial number of predators
+    N0 = np.int64(rho*L**2) if N0 == -1 else N0 # Initial number of predators
+    # Ensure the complementary CDF of the inverse power law is handles properly
+    P = P_reduced if not reduce else P 
 
     ## Initialize constants
     delta_idx_2D = [[0,1], [0,-1], [1,0], [-1,0]]
