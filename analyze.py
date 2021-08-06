@@ -116,14 +116,11 @@ class Analyzer():
         for i, var in enumerate(self._var_arr):
             for j, seed in enumerate(seeds):
                 suffix = self._suffix.format(var=var, seed=seed)
-                print(suffix); exit()
-                _N = np.load(self._ddir+"pred_population{suffix:s}.npy".format(suffix=suffix))
-                _M = np.load(self._ddir+"prey_population{suffix:s}.npy".format(suffix=suffix))
+                _N = np.load(self._dir+"pred_population{suffix:s}.npy".format(suffix=suffix))
+                _M = np.load(self._dir+"prey_population{suffix:s}.npy".format(suffix=suffix))
                 N[i,j] = np.mean(_N[-25:])
                 M[i,j] = np.mean(_M[-25:])
         # Save
-        print(np.mean(N, axis=1))
-        print(self.save_suffix)
         np.save(self._rdir+"N{suffix:s}".format(suffix=self.save_suffix), N)
         np.save(self._rdir+"M{suffix:s}".format(suffix=self.save_suffix), M)
         # Print closing statements
