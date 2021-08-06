@@ -22,7 +22,10 @@ class Analyzer():
         if not os.path.exists(self._rdir):
             os.makedirs(self._rdir)
         # Load specific variable (argument) array
-        self._var_arr = np.loadtxt(self._dir+'{name:s}.txt'.format(name=args.argument))
+        try:
+            self._var_arr = np.loadtxt(self._dir+'{name:s}.txt'.format(name=args.argument))
+        except IOError:
+            self._var_arr = []
         # Specify suffix depending on the argument 
         # (adapt as necessary)
         if args.argument == 'lambda':
@@ -64,10 +67,34 @@ class Analyzer():
                     mu=args.mu, sigma=args.sigma
                 )
             )
-            self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}' \
+            self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_' \
                 'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
                 args.T, args.N0, args.M0, args.H, 
                 args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
+            )
+        elif args.argument == 'evolution':
+            self._suffix = (
+                '_T{:d}_N{:d}_M{:d}_H{:.3f}'
+                '_rho{:.3f}_mu{:.4f}_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}'
+                '_seed{:s}'.format(
+                    args.T, args.N0, args.M0, args.H, args.rho, 
+                    args.mu, args.Lambda_, args.lambda_, args.sigma, args.alpha,
+                    '{seed:d}'
+                )
+            )
+            self._save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_' \
+                'Lambda{:.4f}_lambda{:.4f}_alpha{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
+                args.T, args.N0, args.M0, args.H,
+                args.rho, args.Lambda_, args.lambda_, args.alpha, args.mu, args.sigma
+            )
+            self._printstr = (
+                '{L}x{L} lattice, H={H:.3f}, \u03C1={rho:.3f}, T={T:d}, ' \
+                '\u039B={Lambda_:.4f}, \u03BB={lambda_:.4f}, ' \
+                '\u03B1={alpha:.3f}, \u03BC={mu:.4f}, \u03C3={sigma:.4f}'.format(
+                    L=2**args.m, H=args.H, rho=args.rho, T=args.T,
+                    Lambda_=args.Lambda_, lambda_=args.lambda_,
+                    alpha=args.alpha, mu=args.mu, sigma=args.sigma
+                )
             )
         else:
             print('No specified suffix structure for given argument: {:s}'.format(args.argument))
@@ -97,7 +124,38 @@ class Analyzer():
         np.save(self._rdir+"M{suffix:s}".format(suffix=self.save_suffix), M)
         # Print closing statements
         print("Computed quasistationary population densities for \n %s"%(self._printstr))
-    
+
+    def compute_density_evolution(self, args):
+        """ Compute average population density over time """
+        L = 2**args.m
+        # Get directories based on the argument
+        self._get_string_dependent_vars(args)
+        # Load variable arrays
+        seeds = np.loadtxt(self._dir+'seeds.txt', dtype=int)
+        # Allocate
+        N = np.zeros((args.nmeasures+1, len(seeds)))
+        M = np.zeros((args.nmeasures+1, len(seeds)))
+        ph = np.zeros((args.nmeasures+1, len(seeds)))
+        etah = np.zeros((args.nmeasures+1, len(seeds)))
+        # Load data
+        for i, seed in enumerate(seeds):
+            suffix = self._suffix.format(seed=seed)
+            N[:,i] = np.load(self._dir+f'pred_population{suffix}.npy')
+            M[:,i] = np.load(self._dir+f'prey_population{suffix}.npy')
+            _ph = np.ma.divide(np.load(self._dir+f'predators_on_habitat{suffix}.npy'), N[:,i]).filled(0)
+            I = np.load(self._dir+f'isolated_patches{suffix}.npy').astype(float)
+            I = np.cumsum(I)
+            I[:args.nmeasures//2+1] /= (args.rho * L**2)
+            I[args.nmeasures//2+1:] /= (args.rho/5*L**2)
+            etah[:,i] = 1 - I
+        # Save
+        np.save(self._rdir+f'N{self._save_suffix}', N)
+        np.save(self._rdir+f'M{self._save_suffix}', M)
+        np.save(self._rdir+f'ph{self._save_suffix}', ph)
+        np.save(self._rdir+f'etah{self._save_suffix}', etah)
+        # Print colsing statements
+        print(f'Computed population dynamics for \n {self._printstr}')
+
 
 if __name__ == "__main__":
     # Instantiate class objects
@@ -105,7 +163,8 @@ if __name__ == "__main__":
     args = Argus.args 
     Analyze = Analyzer() 
     # Analyze
-    Analyze.compute_population_densities(args)
+    # Analyze.compute_population_densities(args)
+    Analyze.compute_density_evolution(args)
     
 
     

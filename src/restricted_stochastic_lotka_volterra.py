@@ -88,7 +88,7 @@ def nb_get_1D_neighbors(idx, L):
 def nb_SLLVM(
         T, N0, M0, sites, reduced_sites, mu, lambda_, Lambda_, sigma, alpha, P, P_reduced,
         sites_patch_dict, reduced_sites_patch_dict,
-        nmeasures, bins, visualize, xmin=1, reduce=True
+        nmeasures, bins, visualize, xmin=1, reduce=False
     ):
     """ Runs the stochastic lattice Lotka-Volterra model
         While the lattice is a 2D (square) lattice, we first convert everyting to a 
@@ -146,12 +146,14 @@ def nb_SLLVM(
     # Specify some variables
     L, _ = sites.shape              # Size of LxL lattice
     rho = np.sum(sites) / L**2      # Habitat density
-    dmeas = T // nmeasures          # Δt at which measurements need to be collected
+    dmeas = T // (nmeasures -1)     # Δt at which measurements need to be collected
     treduce = T // 2                # Time at which habitat will be reduced
     _nn = 4                         # Number of nearest neighbors
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
-    N0 = np.int64(L**2/10) if N0 == -1 else N0  # Initial number of predators
+    N0 = np.int64(rho*L**2) if N0 == -1 else N0 # Initial number of predators
+    # Ensure the complementary CDF of the inverse power law is handles properly
+    P = P_reduced if not reduce else P 
 
     ## Initialize constants
     delta_idx_2D = [[0,1], [0,-1], [1,0], [-1,0]]
