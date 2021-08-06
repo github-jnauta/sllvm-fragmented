@@ -18,7 +18,9 @@ if __name__ == "__main__":
 
     if not args.nosave:
         # Specify directory, and make it if it does not yet exist
-        _dir = args.ddir+"sllvm/{:s}/{L:d}x{L:d}/".format(args.argument, L=2**args.m)
+        _dir = args.ddir+'sllvm/{:s}/{L:d}x{L:d}/H{H:3f}/'.format(
+            args.argument, L=2**args.m, H=args.H
+        )        
         if not os.path.exists(_dir):
             os.makedirs(_dir)
         suffix = (
