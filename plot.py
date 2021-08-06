@@ -718,14 +718,14 @@ if __name__ == "__main__":
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
     # Pjotr.plot_lattice_evolution(args)
-    Pjotr.plot_fragmented_lattice(args)
+    # Pjotr.plot_fragmented_lattice(args)
     # Pjotr.plot_patch_distribution(args)
 
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
     # Pjotr.plot_population_densities(args)
     # Pjotr.plot_population_densities_alpha(args)
-    # Pjotr.plot_population_densities_lambda(args)
+    Pjotr.plot_population_densities_lambda(args)
     # Pjotr.plot_population_phase_space(args)
 
     ## Flight length related plots
