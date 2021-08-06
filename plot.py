@@ -340,8 +340,6 @@ class Plotter():
         # Initialize figure
         fig, axes = plt.subplots(1,2, figsize=(7,3.5/4*3), tight_layout=True)
         # axin = axes[0].inset_axes([0.57,0.6,0.35,0.35])
-        # pred_population_T5000_N-1_M-1_H0.010_rho0.200_Lambda-1.0000_lambda0.0130_alpha2.0000_mu-1.0000_sigma0.2000_seed1
-        # pred_population_T5000_N-1_M-1_H0.900_rho0.200_mu-1.0000_Lambda-1.0000_lambda0.0130_sig0.2000_a2.000_seed1
         # Plot
         for i, H in enumerate(H_arr):
             suffix = (
@@ -576,12 +574,10 @@ class Plotter():
                 args.T, args.N0, args.M0, H,
                 args.rho, args.Lambda_, args.alpha, args.mu, args.sigma
             )
-            print(H, args.alpha)
             _N = np.load(_rdir+'N{:s}.npy'.format(suffix))
             _M = np.load(_rdir+'M{:s}.npy'.format(suffix))
             N = np.mean(_N, axis=1) / L**2
             M = np.mean(_M, axis=1) / L**2
-            print(N); exit()
             # Plot
             axes[0].semilogx(
                 lambda_arr, N, color=colors[i], marker=markers[i], mfc='white',
@@ -713,9 +709,9 @@ if __name__ == "__main__":
 
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
-    # Pjotr.plot_population_densities(args)
+    Pjotr.plot_population_densities(args)
     # Pjotr.plot_population_densities_alpha(args)
-    Pjotr.plot_population_densities_lambda(args)
+    # Pjotr.plot_population_densities_lambda(args)
     # Pjotr.plot_population_phase_space(args)
 
     ## Flight length related plots
