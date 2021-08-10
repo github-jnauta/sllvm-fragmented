@@ -80,8 +80,8 @@ if [ $SSH ]; then
 	echo "Executing code, #seeds $NSEEDS"
         parallel -S $nodes_string --sshdelay 0.1 --delay 0.1 "
         cd {1};
-        python run_system.py --H {2} --alpha {3} --rho {4} --lambda {5} --seed {6};
-        " ::: $CODEDIR ::: ${H[@]} ::: ${alpha[@]} ::: ${rho[@]} ::: ${lambda[@]} ::: ${seeds[@]}
+        python run_system.py --H {2} --alpha {3} --rho {4} --sigma {5} --lambda {6} --seed {7};
+        " ::: $CODEDIR ::: ${H[@]} ::: ${alpha[@]} ::: ${rho[@]} ::: ${sigma[@]} ::: ${lambda[@]} ::: ${seeds[@]}
     fi 
     ## RETRIEVE data 
     if $GETDATA; then 
