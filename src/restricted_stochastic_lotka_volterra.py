@@ -493,8 +493,11 @@ class SLLVM(object):
         flightlengths = np.arange(xmin, xmax)        
         P = np.zeros(len(flightlengths))
         P[0] = 1.
-        norm = zeta(args.alpha, xmin) - zeta(args.alpha, xmax)
-        P_reduced = (zeta(args.alpha, flightlengths) - zeta(args.alpha, xmax))/norm 
+        if args.alpha == -1 or args.alpha == np.inf:
+            P_reduced = P 
+        else:
+            norm = zeta(args.alpha, xmin) - zeta(args.alpha, xmax)
+            P_reduced = (zeta(args.alpha, flightlengths) - zeta(args.alpha, xmax))/norm         
         # Initialize dictionary
         outdict = {}
         # Run 
@@ -507,7 +510,7 @@ class SLLVM(object):
         # Save
         outdict['prey_population'] = output[0]
         outdict['pred_population'] = output[1]
-        outdict['coexistence'] = output[2]
+        # outdict['coexistence'] = output[2]
         outdict['flight_lengths'] = output[3]
         outdict['habitat_efficiency'] = output[4]
         outdict['predators_on_habitat'] = output[5]

@@ -61,7 +61,7 @@ class Args():
             '--T', dest='T', type=int, default=5000, help='number of Monte-Carlo steps'
         )
         parser.add_argument(
-            '--k', dest='nmeasures', type=int, default=500,
+            '--k', dest='nmeasures', type=int, default=250,
             help='specify the number of times population size needs to be measured'
         )
         parser.add_argument(
@@ -96,7 +96,7 @@ class Args():
         )
         ## Analysis variables
         parser.add_argument(
-            '--arg', dest='argument', type=str, default='evolution',
+            '--arg', dest='argument', type=str, default='sigma',
             help='specify name of argument "x" for which "f(x)" is computed'
         )
         # Parse arguments

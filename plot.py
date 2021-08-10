@@ -669,8 +669,9 @@ class Plotter():
                 M = np.mean(_M, axis=1) / L**2
                 ci = i % len(colors)
                 mi = i % len(markers)
-                axes[0].plot(
-                    alpha_arr, N, color=colors[ci], marker=markers[mi], mfc='white',
+                axes[0].errorbar(
+                    alpha_arr, N, yerr=np.std(_N, axis=1)/L**2, capsize=3,
+                    color=colors[ci], marker=markers[mi], mfc='white',
                     markersize=4, linewidth=0.85, label=rf'$H={H:.3f}$'
                 )
                 axes[1].plot(
@@ -682,6 +683,12 @@ class Plotter():
                     alpha_arr, R, color=colors[ci], marker=markers[mi], mfc='white',
                     markersize=4, linewidth=0.85, label=rf'$H={H:.3f}$'
                 )
+                # Determine α* 
+                # alpha_star = np.mean(alpha_arr[np.argmax(_N, axis=0)])
+                # axes[0].plot(
+                #     [alpha_star, alpha_star], [0, 1], linestyle='--',
+                #     color=colors[ci], linewidth=0.75
+                # )
             except FileNotFoundError:
                 print(suffix)
                 pass 
@@ -792,8 +799,8 @@ if __name__ == "__main__":
     # Pjotr.plot_population_dynamics(args)
     # Pjotr.plot_population_densities(args)
     # Pjotr.plot_population_densities_alpha(args)
-    # Pjotr.plot_population_densities_lambda(args)
-    Pjotr.plot_population_densities_H(args)
+    Pjotr.plot_population_densities_lambda(args)
+    # Pjotr.plot_population_densities_H(args)
     # Pjotr.plot_population_phase_space(args)
 
     ## Flight length related plots
