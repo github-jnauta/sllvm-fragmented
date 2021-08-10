@@ -507,7 +507,7 @@ class SLLVM(object):
         # Save
         outdict['prey_population'] = output[0]
         outdict['pred_population'] = output[1]
-        outdict['coexistence'] = output[2]
+        # outdict['coexistence'] = output[2]
         outdict['flight_lengths'] = output[3]
         outdict['habitat_efficiency'] = output[4]
         outdict['predators_on_habitat'] = output[5]

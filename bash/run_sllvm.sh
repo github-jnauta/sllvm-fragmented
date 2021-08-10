@@ -57,20 +57,19 @@ fi
 ## DEFINE variables and sequences
 #  Additionally store these variables in files for later use (e.g. analysis, plotting)
 seeds=$(seq 1 1 $NSEEDS)
-alpha=$(seq 1.1 0.2 2.9)
-#H=$(seq 0.1 0.1 0.9)
-H=(0.010 0.100 0.200 0.500 0.900)
+alpha=$(seq 1.1 0.1 3.0)
+python -c 'import numpy as np; np.savetxt("H.txt", np.logspace(-2,0,25), fmt="%.4f")'
+#H=(0.010000 0.012115 0.014678 0.017783 0.021544 0.026102 0.031623 0.038312 0.046416 0.056234 0.068129 0.082540 0.100000 0.121153 0.146780 0.177828 0.215443 0.261016 0.316228 0.383119 0.464159 0.562341 0.681292 0.825404 1.000000)
 rho=(0.2)
-python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,0,25), fmt="%.4e")'
-#Lambda=(1)
-#lambda=(0.001 0.013 0.025 0.075 0.1 0.2)
+#python -c 'import numpy as np; np.savetxt("lambda.txt", np.logspace(-3,0,25), fmt="%.4e")'
+lambda=(0.05 0.025 0.0125)
 mkdir -p $DATADIR
 echo "${seeds[@]}" > $DATADIR/seeds.txt
 echo "${alpha[@]}" > $DATADIR/alpha.txt
-echo "${H[@]}" > $DATADIR/H.txt
 echo "${rho[@]}" > $DATADIR/rho.txt
-#echo "${Lambda[@]}" > $DATADIR/Lambda.txt
-mapfile -t lambda < lambda.txt; mv lambda.txt $DATADIR
+echo "${H[@]}" > $DATADIR/H.txt
+mapfile -t H < H.txt; mv H.txt $DATADIR
+#mapfile -t lambda < lambda.txt; mv lambda.txt $DATADIR
 
 if [ $SSH ]; then 
     ## EXECUTE Python script in parallel on all available CPU threads
@@ -85,10 +84,10 @@ if [ $SSH ]; then
     if $GETDATA; then 
         for node in ${noboss_nodes[@]}; do 
             echo $node; 
-	    #for h in ${H[@]}; do 
-            #rsync -avz --include='*Lambda-1*.npy' --exclude='*' $node:${DATADIR}H$h/ ${DATADIR}H$h/
-	    #echo $node:${DATADIR}H$h/ ${DATADIR}H$h/
-	    rsync -avzW --include='*population*Lambda-1*.npy' --exclude='*' $node:${DATADIR} ${DATADIR}
+	    for h in ${H[@]}; do
+                HDIR=${DATADIR}H$h/
+                rsync -avz --include='*Lambda-1*.npy' --exclude='*' $node:${HDIR} ${HDIR}/
+            done 
         done
     fi
 fi 
