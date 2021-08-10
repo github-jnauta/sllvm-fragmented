@@ -86,7 +86,8 @@ if [ $SSH ]; then
     if $GETDATA; then 
         for node in ${noboss_nodes[@]}; do 
             echo $node; 
-            rsync -avz --include='*Lambda-1*.npy' --exclude='*' $node:${DATADIR} ${DATADIR}/
+            for h
+            rsync -avz --include='*Lambda-1*.npy' --exclude='*' $node:${DATADIR} ${DATADIR}
         done 
     fi
 fi 

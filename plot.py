@@ -542,7 +542,7 @@ class Plotter():
          
         # Save
         self.figdict[f'population_density_alpha_rho{args.rho}'] = fig 
-    
+
     def plot_population_densities_lambda(self, args):
         """ Plot population densities versus λ """
         L = 2**args.m
@@ -550,34 +550,37 @@ class Plotter():
         _dir = args.rdir+'sllvm/lambda/'
         _rdir = args.rdir+'sllvm/lambda/{L:d}x{L:d}/'.format(L=L)
         # Load variables
-        lambda_arr = np.logspace(-3,0,35)
+        lambda_arr = np.logspace(-3,0,25)
+        alpha_arr = np.loadtxt(_dir+'alpha.txt')
+        H_arr = np.loadtxt(_dir+'H.txt')
         # Initialize figure
         fig, axes = plt.subplots(1,3, figsize=(3*3.5,3.5/4*3), tight_layout=True)
-        # Load data & plot
+        for i, alpha in enumerate(alpha_arr):
+        # for i, H in enumerate(H_arr):
             # Load data
-        suffix = '_T{:d}_N{:d}_M{:d}_rho{:.3f}' \
-            'Lambda{:.4f}_alpha{:.3f}_mu{:.4f}_sigma{:.4f}'.format(
-            args.T, args.N0, args.M0,
-            args.rho, args.Lambda_, args.alpha, args.mu, args.sigma
-        )
-        _N = np.load(_rdir+'N{:s}.npy'.format(suffix))
-        _M = np.load(_rdir+'M{:s}.npy'.format(suffix))
-        N = np.mean(_N, axis=1) / L**2
-        M = np.mean(_M, axis=1) / L**2
-        D = Plotter.true_diversity(N, M)
-        D = (N+M)*(D-1)
-        # Plot
-        axes[0].semilogx(
-            lambda_arr, N, color='k', marker='o', mfc='white',
-            markersize=4#, label=r'$H=%.2f$'%(H)#label=r'$\alpha=%.1f$'%(alpha)
-        )
-        axes[1].semilogx(
-            lambda_arr, M, color='k', marker='o', mfc='white',
-            markersize=4#, label=r'$H=%.2f$'%(H)#label=r'$\alpha=%.1f$'%(alpha)
-        )
-        axes[2].semilogx(
-            lambda_arr, D, color='k', marker='o', mfc='white', markersize=4
-        )
+            suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}' \
+                    '_Lambda{:.4f}_alpha{:.3f}_mu{:.4f}_sigma{:.4f}'.format(
+                    args.T, args.N0, args.M0, args.H,
+                    args.rho, args.Lambda_, alpha, args.mu, args.sigma
+            )
+            _N = np.load(_rdir+'N{:s}.npy'.format(suffix))
+            _M = np.load(_rdir+'M{:s}.npy'.format(suffix))
+            N = np.mean(_N, axis=1) / L**2
+            M = np.mean(_M, axis=1) / L**2
+            D = Plotter.true_diversity(N, M)
+            D = (N+M)*(D-1)
+            # Plot
+            axes[0].semilogx(
+                lambda_arr, N, color=colors[i], marker=markers[i], mfc='white',
+                markersize=4, label=r'$\alpha=%.1f$'%(alpha) #label=r'$H=%.2f$'%(H)# 
+            )
+            axes[1].semilogx(
+                lambda_arr, M, color=colors[i], marker=markers[i], mfc='white',
+                markersize=4#, label=r'$\alpha=%.1f$'%(alpha) #label=r'$H=%.2f$'%(H)#
+            )
+            axes[2].semilogx(
+                lambda_arr, D, color=colors[i], marker=markers[i], mfc='white', markersize=4
+            )
         # Locally compute a parabola to determine approximate maximum
         X = np.log10(lambda_arr)[7:16]
         Y = D[7:16]
@@ -601,7 +604,7 @@ class Plotter():
         )
         # Limits, labels, etc
         ylabels = [r'$N$', r'$M$', r'$\mathcal{R}$']
-        ylims = [0.12, 1.02, 0.35]
+        ylims = [0.4, 0.21, 0.3]
         height = [0.1, 0.1]
         for i, ax in enumerate(axes):
             ax.set_xlim(min(lambda_arr), max(lambda_arr))
@@ -631,14 +634,68 @@ class Plotter():
                     0.95, 0.5, r'overconsumption', rotation=90, va='center', ha='right',
                     fontsize=11, transform=ax.transAxes
                 )
-            # if i == 1:
-            #     ax.legend(
-            #         loc='upper right', fontsize=11, ncol=1, labelspacing=0.1,
-            #         handletextpad=0.1, borderaxespad=0.1, handlelength=1,
-            #         columnspacing=0.4, frameon=False
-            #     )
+                ax.legend(
+                    loc='upper left', fontsize=11, ncol=1, labelspacing=0.1,
+                    handletextpad=0.1, borderaxespad=0.1, handlelength=1,
+                    columnspacing=0.4, frameon=False
+                )
         # Save
         self.figdict[f'population_densities_lambda_rho{args.rho}'] = fig 
+
+    def plot_population_densities_H(self, args):
+        """ Plot populations densites as a function of H 
+            Note that some of the plots are a function of α for different values of H
+        """
+        L = 2**args.m
+        # Specify directory
+        _dir = args.rdir+'sllvm/H/'
+        _rdir = args.rdir+'sllvm/H/{L:d}x{L:d}/'.format(L=L)
+        # Load variables
+        alpha_arr = np.loadtxt(_dir+'alpha.txt')
+        H_arr = np.loadtxt(_dir+'H.txt')[10:]
+        # Initialize figure
+        fig, axes = plt.subplots(1,3, figsize=(3*3.5,3.5/4*3), tight_layout=True)
+        # Load data & plot 
+        for i, H in enumerate(H_arr):
+            suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_' \
+                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
+                args.T, args.N0, args.M0, H,
+                args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
+            )
+            try:
+                _N = np.load(_rdir+f'N{suffix}.npy')
+                _M = np.load(_rdir+f'M{suffix}.npy')
+                N = np.mean(_N, axis=1) / L**2
+                M = np.mean(_M, axis=1) / L**2
+                ci = i % len(colors)
+                mi = i % len(markers)
+                axes[0].plot(
+                    alpha_arr, N, color=colors[ci], marker=markers[mi], mfc='white',
+                    markersize=4, linewidth=0.85, label=rf'$H={H:.3f}$'
+                )
+                axes[1].plot(
+                    alpha_arr, M, color=colors[ci], marker=markers[mi], mfc='white',
+                    markersize=4, linewidth=0.85, label=rf'$H={H:.3f}$'
+                )
+                R = (N+M) * (Plotter.true_diversity(N,M) - 1)
+                axes[2].plot(
+                    alpha_arr, R, color=colors[ci], marker=markers[mi], mfc='white',
+                    markersize=4, linewidth=0.85, label=rf'$H={H:.3f}$'
+                )
+            except FileNotFoundError:
+                print(suffix)
+                pass 
+        # Limits, labels, etc
+        for i, ax in enumerate(axes):
+            ax.set_xlim(1, 3)
+            ax.set_ylim(bottom=0)
+            ax.set_xlabel(r'$\alpha$', fontsize=16)
+            ax.set_ylabel(r'population', fontsize=16)
+            if i == 1:
+                ax.legend(
+                    loc='upper right', fontsize=10, frameon=False, labelspacing=0.2,
+                    handletextpad=0.2, handlelength=1
+                )
 
 
     ###########################
@@ -735,7 +792,8 @@ if __name__ == "__main__":
     # Pjotr.plot_population_dynamics(args)
     # Pjotr.plot_population_densities(args)
     # Pjotr.plot_population_densities_alpha(args)
-    Pjotr.plot_population_densities_lambda(args)
+    # Pjotr.plot_population_densities_lambda(args)
+    Pjotr.plot_population_densities_H(args)
     # Pjotr.plot_population_phase_space(args)
 
     ## Flight length related plots
