@@ -120,6 +120,29 @@ class Analyzer():
                     alpha=args.alpha, mu=args.mu, sigma=args.sigma
                 )
             )
+        elif args.argument == 'sigma':
+            self._var_arr = np.loadtxt(self._dir+'{name:s}.txt'.format(name='lambda'))
+            self._suffix = (
+                '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}'
+                '_Lambda{:.4f}_lambda{:s}_sig{:.4f}_a{:.3f}_seed{:s}'.format(
+                    args.T, args.N0, args.M0, args.H, args.rho, args.mu,
+                    args.Lambda_, '{var:.4f}', args.sigma, args.alpha, '{seed:d}'
+                )
+            )
+            self._printstr = (
+                '{L}x{L} lattice, H={H:.3f}, \u03C1={rho:.3f}, T={T:d}, ' \
+                '\u039B={Lambda_:.4f}, \u03B1={alpha:.3f}, ' \
+                '\u03BC={mu:.4f}, \u03C3={sigma:.4f}'.format(
+                    L=2**args.m, H=args.H, rho=args.rho, T=args.T,
+                    Lambda_=args.Lambda_, alpha=args.alpha,
+                    mu=args.mu, sigma=args.sigma
+                )
+            )
+            self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}' \
+                '_Lambda{:.4f}_alpha{:.3f}_mu{:.4f}_sigma{:.4f}'.format(
+                args.T, args.N0, args.M0, args.H,
+                args.rho, args.Lambda_, args.alpha, args.mu, args.sigma
+            )
         else:
             print('No specified suffix structure for given argument: {:s}'.format(args.argument))
             exit()

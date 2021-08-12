@@ -329,7 +329,7 @@ def nb_SLLVM(
                     neighbor = neighbors[_nidx]
                     _is_empty = empty_sites[_nidx]
                     # If empty, place prey there with probability σ
-                    if _is_empty and  np.random.random() < sigma :
+                    if _is_empty and  np.random.random() < sigma:
                         prey_lattice[neighbor] = True       # Place prey on prey lattice
                         occupied_sites.append(neighbor)     # Append occupied site to the list
                         M += 1
@@ -393,7 +393,7 @@ def nb_SLLVM(
                         if prey_lattice[new_idx]:
                             _r = np.random.random()
                             ## (iv)(a) do not interact with prey with probability 1-Λ
-                            if _r < 1 - Lambda_lst[_pred_id]:                                
+                            if _r < 1 - Lambda_lst[_pred_id]:
                                 # Update predator lattice
                                 pred_lattice[new_idx] = pred_lattice[idx]
                                 pred_lattice[idx] = 0 
@@ -484,7 +484,7 @@ class SLLVM(object):
         sites_patch_dict, num_patches = self.Lattice.label(sites)
         reduced_sites_patch_dict, num_reduced_patches = self.Lattice.label(reduced_sites)
         # Compute maximum flight length 
-        xmax = 5*2**args.m if not xmax else xmax 
+        xmax = 200*2**args.m if not xmax else xmax 
         xmax_measure = 2*2**args.m if not xmax else xmax 
         # Pre-compute the bins for distribution over flight lenghts
         bins = np.logspace(np.log10(xmin), np.log10(xmax_measure), num=args.nbins, dtype=np.int64)
@@ -510,6 +510,8 @@ class SLLVM(object):
         # Save
         outdict['prey_population'] = output[0]
         outdict['pred_population'] = output[1]
+        print(np.mean(output[0][-25:]))
+        print(np.mean(output[1][-25:]))
         # outdict['coexistence'] = output[2]
         outdict['flight_lengths'] = output[3]
         outdict['habitat_efficiency'] = output[4]
