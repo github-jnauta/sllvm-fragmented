@@ -16,7 +16,7 @@ from scipy.optimize import curve_fit
 from scipy.interpolate import interp1d
 from scipy.stats import gmean, lognorm
 from scipy.optimize import OptimizeWarning
-from scipy.special import zeta
+from scipy.special import zeta, gamma
 # Set plotting font for TeX labels
 plt.rcParams.update({
     'text.usetex': True,
@@ -229,16 +229,16 @@ class Plotter():
 
 
     ## Animated plots
-    def plot_lattice_evolution(self, args):
+    def plot_lattice_dynamics(self, args):
         # Specify directory
-        _dir = args.ddir+"sllvm/evolution/{L:d}x{L:d}/".format(L=2**args.m)
+        _dir = args.ddir+"sllvm/dynamics/{L:d}x{L:d}/H{H:.4f}/".format(H=args.H,L=2**args.m)
         _rdir = "figures/"
         # Set variables
         def get_image(alpha):
             # Load lattice            
             suffix = (
-                '_T{:d}_N{:d}_M{:d}_H{:.3f}'
-                '_rho{:.3f}_mu{:.4f}_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}'
+                '_T{:d}_N{:d}_M{:d}_H{:.4f}'
+                '_rho{:.3f}_mu{:.4f}_Lambda{:.4f}_lambda{:.4f}_sigma{:.4f}_alpha{:.3f}'
                 '_seed{:d}'.format(
                     args.T, args.N0, args.M0, args.H, args.rho, 
                     args.mu, args.Lambda_, args.lambda_, args.sigma, args.alpha,
@@ -292,8 +292,12 @@ class Plotter():
         if not args.save:
             plt.show()
         else:
-            suffix = "_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}_lambda{:.4f}_sig{:.4f}".format(
-                args.T, args.N0, args.M0, args.H, args.rho, args.mu, args.lambda_, args.sigma
+            suffix = (
+                '_T{:d}_N{:d}_M{:d}_H{:.4f}'
+                '_rho{:.3f}_mu{:.4f}_lambda{:.4f}_sigma{:.4f}_alpha{:.3f}'.format(
+                    args.T, args.N0, args.M0, args.H, 
+                    args.rho, args.mu, args.lambda_, args.sigma, args.alpha
+                )
             )
             anim.save(
                 _rdir+"gifs/lattice_animation{suffix:s}.gif".format(suffix=suffix),
@@ -495,6 +499,7 @@ class Plotter():
         # Load variables
         alpha_arr = np.loadtxt(_dir+'alpha.txt')
         H_arr = np.loadtxt(_dir+'H.txt')
+        fitax = np.linspace(min(alpha_arr), max(alpha_arr), 100)
         # Initialize figure
         fig, axes = plt.subplots(3,1, figsize=(5/4*3,7), tight_layout=True)
         # Load data & plot 
@@ -512,22 +517,28 @@ class Plotter():
             # Plot
             axes[0].plot(
                 alpha_arr, N, color=colors[i], marker=markers[i], mfc='white',
-                markersize=4, label=r'$H=%.2f$'%(H)
+                markersize=4, linewidth=0.85, label=r'$H=%.2f$'%(H)
             )
             axes[1].plot(
                 alpha_arr, M, color=colors[i], marker=markers[i], mfc='white',
-                markersize=4, label=r'$H=%.2f$'%(H)
+                markersize=4, linewidth=0.85, label=r'$H=%.2f$'%(H)
             )
-            D = (Plotter.true_diversity(N, M)-1)*(N+M)
-            # D = N/(N+M)
+            R = (Plotter.true_diversity(N, M)-1)*(N+M)
             axes[2].plot(
-                alpha_arr, D, color=colors[i], marker=markers[i], mfc='white',
-                markersize=4, label=r'$H=%.2f$'%(H)
+                alpha_arr, R, color=colors[i], marker=markers[i], mfc='white',
+                markersize=4, linewidth=0.85, label=r'$H=%.2f$'%(H)
             )
+            # Plot fit(s)
+            # popt, _ = curve_fit(Plotter.gamma_distribution, alpha_arr, N)
+            # axes[0].plot(
+            #     fitax, Plotter.gamma_distribution(fitax, *popt), color=colors[i],
+            #     linewidth=0.85, linestyle='--'
+            # )
         # Limits, labels, etc
         ylabels = [r'$N$', r'$M$', r'$\mathcal{R}$']
         for i, ax in enumerate(axes):
             ax.set_xlim(1, 3)
+            ax.set_ylim(bottom=0)
             ax.set_xlabel(r'$\alpha$', fontsize=16)
             ax.set_ylabel(ylabels[i], fontsize=16)
             if i == 1:
@@ -536,12 +547,7 @@ class Plotter():
                     handletextpad=0.1, borderaxespad=0.1, handlelength=1,
                     columnspacing=0.6, frameon=False
                 )
-            if i == 2:
-                ax.set_ylim(bottom=0)
-            else:
-                ax.set_ylim(bottom=0)
-            if i == 0:
-                ax.set_title(fr'$\rho={args.rho:.2f}$', fontsize=16)
+                
          
         # Save
         self.figdict[f'population_density_alpha_rho{args.rho}'] = fig 
@@ -916,7 +922,7 @@ if __name__ == "__main__":
     ## Lattice related plots
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
-    # Pjotr.plot_lattice_evolution(args)
+    # Pjotr.plot_lattice_dynamics(args)
     # Pjotr.plot_fragmented_lattice(args)
     # Pjotr.plot_patch_distribution(args)
 

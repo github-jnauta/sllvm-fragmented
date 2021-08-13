@@ -510,8 +510,6 @@ class SLLVM(object):
         # Save
         outdict['prey_population'] = output[0]
         outdict['pred_population'] = output[1]
-        print(np.mean(output[0][-25:]))
-        print(np.mean(output[1][-25:]))
         # outdict['coexistence'] = output[2]
         outdict['flight_lengths'] = output[3]
         outdict['habitat_efficiency'] = output[4]
