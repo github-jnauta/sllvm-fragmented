@@ -17,6 +17,7 @@ class Analyzer():
         L = 2**args.m
         # Determine directory inputs
         self._dir = args.ddir+'sllvm/{arg:s}/{L:d}x{L:d}/'.format(arg=args.argument, L=L)
+        self._ddir = self._dir+'H{H:f}/'.format(H=args.H)
         self._rdir = args.rdir+'sllvm/{name:s}/{L:d}x{L:d}/'.format(name=args.argument, L=L)
         # Make directory if it does not exist
         if not os.path.exists(self._rdir):
@@ -46,7 +47,7 @@ class Analyzer():
                 )
             )
             self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}' \
-                'Lambda{:.4f}_alpha{:.3f}_mu{:.4f}_sigma{:.4f}'.format(
+                '_Lambda{:.4f}_alpha{:.3f}_mu{:.4f}_sigma{:.4f}'.format(
                 args.T, args.N0, args.M0, args.H,
                 args.rho, args.Lambda_, args.alpha, args.mu, args.sigma
             )
@@ -70,6 +71,29 @@ class Analyzer():
             self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_' \
                 'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
                 args.T, args.N0, args.M0, args.H, 
+                args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
+            )
+        elif args.argument == 'H':
+            self._var_arr = np.loadtxt(self._dir+'{name:s}.txt'.format(name='alpha'))
+            self._suffix = (
+                '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}'
+                '_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:s}_seed{:s}'.format(
+                    args.T, args.N0, args.M0, args.H, args.rho, args.mu,
+                    args.Lambda_, args.lambda_, args.sigma, '{var:.3f}', '{seed:d}'
+                )
+            )
+            self._printstr = (
+                '{L}x{L} lattice, H={H:.3f}, \u03C1={rho:.3f}, T={T:d}, ' \
+                '\u039B={Lambda_:.4f}, \u03BB={lambda_:.4f}, ' \
+                '\u03BC={mu:.4f}, \u03C3={sigma:.4f}'.format(
+                    L=2**args.m, H=args.H, rho=args.rho, T=args.T,
+                    Lambda_=args.Lambda_, lambda_=args.lambda_,
+                    mu=args.mu, sigma=args.sigma
+                )
+            )
+            self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_' \
+                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
+                args.T, args.N0, args.M0, args.H,
                 args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
             )
         elif args.argument == 'evolution':
@@ -115,10 +139,14 @@ class Analyzer():
         for i, var in enumerate(self._var_arr):
             for j, seed in enumerate(seeds):
                 suffix = self._suffix.format(var=var, seed=seed)
-                _N = np.load(self._dir+"pred_population{suffix:s}.npy".format(suffix=suffix))
-                _M = np.load(self._dir+"prey_population{suffix:s}.npy".format(suffix=suffix))
-                N[i,j] = np.mean(_N[-25:])
-                M[i,j] = np.mean(_M[-25:])
+                try:
+                    _N = np.load(self._ddir+"pred_population{suffix:s}.npy".format(suffix=suffix))
+                    _M = np.load(self._ddir+"prey_population{suffix:s}.npy".format(suffix=suffix))
+                    N[i,j] = np.mean(_N[-25:])
+                    M[i,j] = np.mean(_M[-25:])
+                except FileNotFoundError:
+                    print(suffix)
+                    exit()
         # Save
         np.save(self._rdir+"N{suffix:s}".format(suffix=self.save_suffix), N)
         np.save(self._rdir+"M{suffix:s}".format(suffix=self.save_suffix), M)
@@ -142,12 +170,13 @@ class Analyzer():
             suffix = self._suffix.format(seed=seed)
             N[:,i] = np.load(self._dir+f'pred_population{suffix}.npy')
             M[:,i] = np.load(self._dir+f'prey_population{suffix}.npy')
-            ph[:,i] = np.load(self._dir+f'predators_on_habitat{suffix}.npy') / N[:,i]
+            _ph = np.ma.divide(np.load(self._dir+f'predators_on_habitat{suffix}.npy'), N[:,i]).filled(0)
             I = np.load(self._dir+f'isolated_patches{suffix}.npy').astype(float)
             I = np.cumsum(I)
             I[:args.nmeasures//2+1] /= (args.rho * L**2)
             I[args.nmeasures//2+1:] /= (args.rho/5*L**2)
             etah[:,i] = 1 - I
+
         # Save
         np.save(self._rdir+f'N{self._save_suffix}', N)
         np.save(self._rdir+f'M{self._save_suffix}', M)

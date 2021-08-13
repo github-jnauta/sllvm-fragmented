@@ -146,12 +146,14 @@ def nb_SLLVM(
     # Specify some variables
     L, _ = sites.shape              # Size of LxL lattice
     rho = np.sum(sites) / L**2      # Habitat density
-    dmeas = T // nmeasures          # Δt at which measurements need to be collected
+    dmeas = T // (nmeasures -1)     # Δt at which measurements need to be collected
     treduce = T // 2                # Time at which habitat will be reduced
     _nn = 4                         # Number of nearest neighbors
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu              # Death rate 
-    N0 = np.int64(L**2/10) if N0 == -1 else N0  # Initial number of predators
+    N0 = np.int64(rho*L**2) if N0 == -1 else N0 # Initial number of predators
+    # Ensure the complementary CDF of the inverse power law is handles properly
+    P = P_reduced if not reduce else P 
 
     ## Initialize constants
     delta_idx_2D = [[0,1], [0,-1], [1,0], [-1,0]]
@@ -491,8 +493,11 @@ class SLLVM(object):
         flightlengths = np.arange(xmin, xmax)        
         P = np.zeros(len(flightlengths))
         P[0] = 1.
-        norm = zeta(args.alpha, xmin) - zeta(args.alpha, xmax)
-        P_reduced = (zeta(args.alpha, flightlengths) - zeta(args.alpha, xmax))/norm 
+        if args.alpha == -1 or args.alpha == np.inf:
+            P_reduced = P 
+        else:
+            norm = zeta(args.alpha, xmin) - zeta(args.alpha, xmax)
+            P_reduced = (zeta(args.alpha, flightlengths) - zeta(args.alpha, xmax))/norm         
         # Initialize dictionary
         outdict = {}
         # Run 
@@ -505,7 +510,7 @@ class SLLVM(object):
         # Save
         outdict['prey_population'] = output[0]
         outdict['pred_population'] = output[1]
-        outdict['coexistence'] = output[2]
+        # outdict['coexistence'] = output[2]
         outdict['flight_lengths'] = output[3]
         outdict['habitat_efficiency'] = output[4]
         outdict['predators_on_habitat'] = output[5]

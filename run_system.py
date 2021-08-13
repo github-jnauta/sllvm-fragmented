@@ -18,12 +18,14 @@ if __name__ == "__main__":
 
     if not args.nosave:
         # Specify directory, and make it if it does not yet exist
-        _dir = args.ddir+"sllvm/{:s}/{L:d}x{L:d}/".format(args.argument, L=2**args.m)
+        _dir = args.ddir+'sllvm/{:s}/{L:d}x{L:d}/H{H:.4f}/'.format(
+            args.argument, L=2**args.m, H=args.H
+        )        
         if not os.path.exists(_dir):
             os.makedirs(_dir)
         suffix = (
-            '_T{:d}_N{:d}_M{:d}_H{:.3f}'
-            '_rho{:.3f}_mu{:.4f}_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}'
+            '_T{:d}_N{:d}_M{:d}_H{:.4f}'
+            '_rho{:.3f}_mu{:.4f}_Lambda{:.4f}_lambda{:.4f}_sigma{:.4f}_alpha{:.3f}'
             '_seed{:d}'.format(
                 args.T, args.N0, args.M0, args.H, args.rho, 
                 args.mu, args.Lambda_, args.lambda_, args.sigma, args.alpha,
@@ -37,7 +39,7 @@ if __name__ == "__main__":
 
     # Print some closing statements
     printstr = (
-        '{L}x{L} lattice, \nH={H:.3f}, \u03C1={rho:.3f}, T={T:d}, \u03B1={alpha:.3f}, ' 
+        '{L}x{L} lattice, \nH={H:.4f}, \u03C1={rho:.3f}, T={T:d}, \u03B1={alpha:.3f}, ' 
         '\u03BC={mu:.4f}, \u039B={Lambda_:.4f}, \u03BB={lambda_:.4f}, '
         '\u03C3={sigma:.4f}, seed {seed:d}'.format(
             L=2**args.m, H=args.H, rho=args.rho, T=args.T,
