@@ -484,7 +484,7 @@ class SLLVM(object):
         sites_patch_dict, num_patches = self.Lattice.label(sites)
         reduced_sites_patch_dict, num_reduced_patches = self.Lattice.label(reduced_sites)
         # Compute maximum flight length 
-        xmax = 5*2**args.m if not xmax else xmax 
+        xmax = 200*2**args.m if not xmax else xmax 
         xmax_measure = 2*2**args.m if not xmax else xmax 
         # Pre-compute the bins for distribution over flight lenghts
         bins = np.logspace(np.log10(xmin), np.log10(xmax_measure), num=args.nbins, dtype=np.int64)
@@ -510,6 +510,7 @@ class SLLVM(object):
         # Save
         outdict['prey_population'] = output[0]
         outdict['pred_population'] = output[1]
+        L = 2**args.m 
         # outdict['coexistence'] = output[2]
         outdict['flight_lengths'] = output[3]
         outdict['habitat_efficiency'] = output[4]
