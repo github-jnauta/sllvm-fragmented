@@ -17,7 +17,7 @@ class Analyzer():
         L = 2**args.m
         # Determine directory inputs
         self._dir = args.ddir+'sllvm/{arg:s}/{L:d}x{L:d}/'.format(arg=args.argument, L=L)
-        self._ddir = self._dir+'H{H:f}/'.format(H=args.H)
+        self._ddir = self._dir+'H{H:.4f}/'.format(H=args.H)
         self._rdir = args.rdir+'sllvm/{name:s}/{L:d}x{L:d}/'.format(name=args.argument, L=L)
         # Make directory if it does not exist
         if not os.path.exists(self._rdir):
@@ -53,14 +53,14 @@ class Analyzer():
             )
         elif args.argument == 'alpha':
             self._suffix = (
-                '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}'
-                '_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:s}_seed{:s}'.format(
+                '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_mu{:.4f}'
+                '_Lambda{:.4f}_lambda{:.4f}_sigma{:.4f}_alpha{:s}_seed{:s}'.format(
                     args.T, args.N0, args.M0, args.H, args.rho, args.mu,
                     args.Lambda_, args.lambda_, args.sigma, '{var:.3f}', '{seed:d}'
                 )
             )
             self._printstr = (
-                '{L}x{L} lattice, H={H:.3f}, \u03C1={rho:.3f}, T={T:d}, ' \
+                '{L}x{L} lattice, H={H:.4f}, \u03C1={rho:.3f}, T={T:d}, ' \
                 '\u039B={Lambda_:.4f}, \u03BB={lambda_:.4f}, ' \
                 '\u03BC={mu:.4f}, \u03C3={sigma:.4f}'.format(
                     L=2**args.m, H=args.H, rho=args.rho, T=args.T,
@@ -68,7 +68,7 @@ class Analyzer():
                     mu=args.mu, sigma=args.sigma
                 )
             )
-            self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_' \
+            self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_' \
                 'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
                 args.T, args.N0, args.M0, args.H, 
                 args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
@@ -98,18 +98,18 @@ class Analyzer():
             )
         elif args.argument == 'evolution':
             self._suffix = (
-                '_T{:d}_N{:d}_M{:d}_H{:.3f}'
-                '_rho{:.3f}_mu{:.4f}_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:.3f}'
+                '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_'
+                'mu{:.4f}_Lambda{:.4f}_lambda{:.4f}_sigma{:.4f}_alpha{:.3f}'
                 '_seed{:s}'.format(
                     args.T, args.N0, args.M0, args.H, args.rho, 
                     args.mu, args.Lambda_, args.lambda_, args.sigma, args.alpha,
                     '{seed:d}'
                 )
             )
-            self._save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_' \
-                'Lambda{:.4f}_lambda{:.4f}_alpha{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
+            self._save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_' \
+                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}_alpha{:.4f}'.format(
                 args.T, args.N0, args.M0, args.H,
-                args.rho, args.Lambda_, args.lambda_, args.alpha, args.mu, args.sigma
+                args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma, args.alpha
             )
             self._printstr = (
                 '{L}x{L} lattice, H={H:.3f}, \u03C1={rho:.3f}, T={T:d}, ' \
@@ -119,6 +119,29 @@ class Analyzer():
                     Lambda_=args.Lambda_, lambda_=args.lambda_,
                     alpha=args.alpha, mu=args.mu, sigma=args.sigma
                 )
+            )
+        elif args.argument == 'sigma':
+            self._var_arr = np.loadtxt(self._dir+'{name:s}.txt'.format(name='lambda'))
+            self._suffix = (
+                '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_mu{:.4f}'
+                '_Lambda{:.4f}_lambda{:s}_sigma{:.4f}_alpha{:.3f}_seed{:s}'.format(
+                    args.T, args.N0, args.M0, args.H, args.rho, args.mu,
+                    args.Lambda_, '{var:.4f}', args.sigma, args.alpha, '{seed:d}'
+                )
+            )
+            self._printstr = (
+                '{L}x{L} lattice, H={H:.4f}, \u03C1={rho:.3f}, T={T:d}, ' \
+                '\u039B={Lambda_:.4f}, \u03B1={alpha:.3f}, ' \
+                '\u03BC={mu:.4f}, \u03C3={sigma:.4f}'.format(
+                    L=2**args.m, H=args.H, rho=args.rho, T=args.T,
+                    Lambda_=args.Lambda_, alpha=args.alpha,
+                    mu=args.mu, sigma=args.sigma
+                )
+            )
+            self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}' \
+                '_Lambda{:.4f}_mu{:.4f}_sigma{:.4f}_alpha{:.3f}'.format(
+                args.T, args.N0, args.M0, args.H,
+                args.rho, args.Lambda_, args.mu, args.sigma, args.alpha
             )
         else:
             print('No specified suffix structure for given argument: {:s}'.format(args.argument))
@@ -142,11 +165,11 @@ class Analyzer():
                 try:
                     _N = np.load(self._ddir+"pred_population{suffix:s}.npy".format(suffix=suffix))
                     _M = np.load(self._ddir+"prey_population{suffix:s}.npy".format(suffix=suffix))
-                    N[i,j] = np.mean(_N[-25:])
-                    M[i,j] = np.mean(_M[-25:])
+                    N[i,j] = np.mean(_N[-50:])
+                    M[i,j] = np.mean(_M[-50:])
                 except FileNotFoundError:
+                    print(self._ddir)
                     print(suffix)
-                    exit()
         # Save
         np.save(self._rdir+"N{suffix:s}".format(suffix=self.save_suffix), N)
         np.save(self._rdir+"M{suffix:s}".format(suffix=self.save_suffix), M)
@@ -168,15 +191,15 @@ class Analyzer():
         # Load data
         for i, seed in enumerate(seeds):
             suffix = self._suffix.format(seed=seed)
-            N[:,i] = np.load(self._dir+f'pred_population{suffix}.npy')
-            M[:,i] = np.load(self._dir+f'prey_population{suffix}.npy')
-            _ph = np.ma.divide(np.load(self._dir+f'predators_on_habitat{suffix}.npy'), N[:,i]).filled(0)
-            I = np.load(self._dir+f'isolated_patches{suffix}.npy').astype(float)
+            N[:,i] = np.load(self._ddir+f'pred_population{suffix}.npy')
+            M[:,i] = np.load(self._ddir+f'prey_population{suffix}.npy')
+            _ph = np.ma.divide(np.load(self._ddir+f'predators_on_habitat{suffix}.npy'), N[:,i]).filled(0)
+            I = np.load(self._ddir+f'isolated_patches{suffix}.npy').astype(float)
             I = np.cumsum(I)
-            I[:args.nmeasures//2+1] /= (args.rho * L**2)
-            I[args.nmeasures//2+1:] /= (args.rho/5*L**2)
+            I /= args.rho * L**2
+            #I[:args.nmeasures//2+1] /= (args.rho * L**2)
+            #I[args.nmeasures//2+1:] /= (args.rho/5*L**2)
             etah[:,i] = 1 - I
-
         # Save
         np.save(self._rdir+f'N{self._save_suffix}', N)
         np.save(self._rdir+f'M{self._save_suffix}', M)
