@@ -60,6 +60,10 @@ class Plotter():
             basic_sum = N**q + M**q               
             return np.ma.power(basic_sum, (1/(1-q))).filled(0)
 
+    @staticmethod
+    def fit_func(x, a, b, c):
+        return a*x**3 * np.exp(-b*a*x) + c
+
     #########################
     # Lattice related plots #
     def plot_fragmented_lattice(self, args):
@@ -493,15 +497,20 @@ class Plotter():
             for different Hurst exponents H (and interaction rates Λ)
         """
         L = 2**args.m
-        # Specify directory
+        # Specify directory        
         _dir = args.rdir+'sllvm/alpha/'
         _rdir = args.rdir+'sllvm/alpha/{L:d}x{L:d}/'.format(L=L)
+        if args.compute:
+            _rdir = _rdir+'fit/'
+            _dir = _rdir
+        
         # Load variables
         alpha_arr = np.loadtxt(_dir+'alpha.txt')
         H_arr = np.loadtxt(_dir+'H.txt')
         fitax = np.linspace(min(alpha_arr), max(alpha_arr), 100)
         # Initialize figure
-        fig, axes = plt.subplots(3,1, figsize=(5/4*3,7), tight_layout=True)
+        fig, axes = plt.subplots(2,1, figsize=(3.5,7/4*3), tight_layout=True)
+        figR, axR = plt.subplots(1,1, figsize=(3.5,3.5/4*3), tight_layout=True)
         # Load data & plot 
         for i, H in enumerate(H_arr):
             # Load data
@@ -510,10 +519,10 @@ class Plotter():
                 args.T, args.N0, args.M0, H, 
                 args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
             )
-            _N = np.load(_rdir+'N{:s}.npy'.format(suffix))
-            _M = np.load(_rdir+'M{:s}.npy'.format(suffix))
-            N = np.mean(_N, axis=1) / L**2
-            M = np.mean(_M, axis=1) / L**2
+            _N = np.load(_rdir+'N{:s}.npy'.format(suffix)) / L**2
+            _M = np.load(_rdir+'M{:s}.npy'.format(suffix)) / L**2
+            N = np.mean(_N, axis=1) 
+            M = np.mean(_M, axis=1) 
             # Plot
             axes[0].plot(
                 alpha_arr, N, color=colors[i], marker=markers[i], mfc='white',
@@ -524,24 +533,31 @@ class Plotter():
                 markersize=4, linewidth=0.85, label=r'$H=%.2f$'%(H)
             )
             R = (Plotter.true_diversity(N, M)-1)*(N+M)
-            axes[2].plot(
+            axR.plot(
                 alpha_arr, R, color=colors[i], marker=markers[i], mfc='white',
                 markersize=4, linewidth=0.85, label=r'$H=%.2f$'%(H)
             )
             # Plot fit(s)
-            # popt, _ = curve_fit(Plotter.gamma_distribution, alpha_arr, N)
+            # popt, _ = curve_fit(Plotter.fit_func, alpha_arr, N)
             # axes[0].plot(
-            #     fitax, Plotter.gamma_distribution(fitax, *popt), color=colors[i],
+            #     fitax, Plotter.fit_func(fitax, *popt), color=colors[i],
             #     linewidth=0.85, linestyle='--'
             # )
         # Limits, labels, etc
+        xlim = [1,2] if args.compute else [1,3]
         ylabels = [r'$N$', r'$M$', r'$\mathcal{R}$']
-        for i, ax in enumerate(axes):
-            ax.set_xlim(1, 3)
+        _axes = [ax for ax in axes] + [axR]
+        for i, ax in enumerate(_axes):          
+            ax.set_xlim(xlim)
             ax.set_ylim(bottom=0)
             ax.set_xlabel(r'$\alpha$', fontsize=16)
             ax.set_ylabel(ylabels[i], fontsize=16)
-            if i == 1:
+            if i < 2:
+                ax.text(
+                    0.0, 1.065, figlabels[i], ha='center', fontsize=14,
+                    transform=ax.transAxes
+                )
+            if i >= 1:
                 ax.legend(
                     loc='upper right', fontsize=11, ncol=1, labelspacing=0.1,
                     handletextpad=0.1, borderaxespad=0.1, handlelength=1,
@@ -551,6 +567,7 @@ class Plotter():
          
         # Save
         self.figdict[f'population_density_alpha_rho{args.rho}'] = fig 
+        self.figdict[f'richness_alpha_rho{args.rho}'] = figR
 
     def plot_population_densities_lambda(self, args):
         """ Plot population densities versus λ """
