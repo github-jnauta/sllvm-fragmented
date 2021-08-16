@@ -852,6 +852,36 @@ class Plotter():
         
         # Save
         self.figdict[f'population_densities_sigma_H{args.H:.4f}_rho{args.rho:.2f}'] = fig 
+    
+    def plot_optimal_alpha(self, args):
+        """ Plot optimal Levy parameter α* """
+        L = 2**args.m
+        # Specify directory        
+        _dir = args.rdir+'sllvm/alpha_opt/'
+        _rdir = args.rdir+'sllvm/alpha_opt/{L:d}x{L:d}/'.format(L=L)
+        if args.compute:
+            _rdir = _rdir+'fit/'
+            _dir = _rdir
+        # Load variable arrays
+        H_arr = np.loadtxt(_dir+'H.txt')
+        # Initialize figure
+        fig, ax = plt.subplots(1,1, figsize=(5,3.5), tight_layout=True)
+        # Load data
+        suffix = '_T{:d}_N{:d}_M{:d}_rho{:.3f}_' \
+            'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
+            args.T, args.N0, args.M0,
+            args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
+        )
+        alphastar_N = np.load(_rdir+f'alphastar_N{suffix}.npy')
+        alphastar_R = np.load(_rdir+f'alphastar_R{suffix}.npy')
+        ax.plot(
+            H_arr, alphastar_N, color='k', marker='o', mfc='white', markersize=4,
+            linewidth=0.85, label=r'$\alpha^*_N$'
+        )
+        ax.plot(
+            H_arr, alphastar_R, color='navy', marker='D', mfc='white', markersize=4,
+            linewidth=0.85, label=r'$\alpha^*_R$'
+        )
 
     ###########################
     # Levy walk related plots #
@@ -1010,12 +1040,13 @@ if __name__ == "__main__":
     # Pjotr.plot_population_densities_sigma(args)
     # Pjotr.plot_population_densities_H(args)
     # Pjotr.plot_population_phase_space(args)
+    Pjotr.plot_optimal_alpha(args)
 
     ## Flight length related plots
     # Pjotr.plot_flight_distribution_Lambda(args)
 
     ## Environmental related plots
-    Pjotr.plot_environmental_metrics_alpha(args)
+    # Pjotr.plot_environmental_metrics_alpha(args)
     
     if not args.save:
         plt.show()
