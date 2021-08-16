@@ -9,6 +9,16 @@ class Analyzer():
     def __init__(self):
         pass 
 
+    @staticmethod
+    def true_diversity(N, M, q=1):
+        if q == 1:
+            pM = np.ma.divide(M,(M+N)).filled(0)
+            pN = np.ma.divide(N,(M+N)).filled(0)
+            return np.exp(- pM * np.ma.log(pM).filled(0) - pN * np.ma.log(pN).filled(0))
+        else:
+            basic_sum = N**q + M**q
+            return np.ma.power(basic_sum, (1/(1-q))).filled(0)
+
     def _get_string_dependent_vars(self, args):
         """ Select the argument to compute against
             i.e. x is the argument where f(x) is computed against
@@ -208,6 +218,47 @@ class Analyzer():
         # Print colsing statements
         print(f'Computed population dynamics for \n {self._printstr}')
 
+    def compute_alphastar_vs_H(self, args):
+        """ Compute the Levy parameter α* that optimizes
+            (i) predator populations, and
+            (ii) species richness 
+        """
+        # Get directories based on the argument
+        self._get_string_dependent_vars(args)
+        # Load variable arrays
+        alpha_arr = np.loadtxt(self._dir+'alpha.txt')
+        H_arr = np.loadtxt(self._dir+'H.txt')
+        seeds = np.loadtxt(self._dir+'seeds.txt', dtype=int)
+        # Allocate
+        alphastar_N = np.zeros((len(H_arr), len(seeds)))
+        alphastar_R = np.zeros((len(H_arr), len(seeds)))
+        # Load data
+        for i, H in enumerate(H_arr):
+            # Load population densities as a function of alpha
+            N = np.zeros((len(self._var_arr), len(seeds)))
+            M = np.zeros((len(self._var_arr), len(seeds)))
+            for j, alpha in enumerate(alpha_arr):
+                for k, seed in enumerate(seeds):
+                    suffix = self._suffix.format(var=alpha, seed=seed)
+                    _N = np.load(self._ddir+f'pred_population{suffix}.npy')
+                    _M = np.load(self._ddir+f'prey_population{suffix}.npy')
+                    N[j,k] = np.mean(_N[-50:])
+                    M[j,k] = np.mean(_M[-50:])
+            # Compute species richness
+            _D = Analyzer.true_diversity(_N, _M)
+            _R = (_D-1)*(_N+_M)
+            # Compute α*
+            alphastar_N[i,:] = alpha_arr[np.argmax(_N, axis=0)]
+            alphastar_R[i,:] = alpha_arr[np.argmax(_R, axis=0)]
+        # Save
+        np.save(self._rdir+f'alphastar_N{self.save_suffix}', alphastar_N)
+        np.save(self._rdir+f'alphastar_R{self.save_suffix}', alphastar_R)
+        # Print closing statements
+        print("Computed optimal Levy parameter estimation for \n %s"%(self._printstr))
+
+
+
+
 
 if __name__ == "__main__":
     # Instantiate class objects
@@ -215,8 +266,9 @@ if __name__ == "__main__":
     args = Argus.args 
     Analyze = Analyzer() 
     # Analyze
-    Analyze.compute_population_densities(args)
+    # Analyze.compute_population_densities(args)
     # Analyze.compute_density_evolution(args)
+    Analyze.compute_alphastar_vs_H(args)
     
 
     
