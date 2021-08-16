@@ -159,20 +159,33 @@ class Analyzer():
         M = np.zeros((len(self._var_arr), len(seeds)))
         Nt = np.zeros((args.nmeasures, len(seeds)))
         Mt = np.zeros((args.nmeasures, len(seeds)))
+        n_isolated = np.zeros((len(self._var_arr), len(seeds)))
+        eta_habitat = np.zeros((len(self._var_arr), len(seeds)))
+        predators_on_habitat = np.zeros((len(self._var_arr), len(seeds)))
         for i, var in enumerate(self._var_arr):
             for j, seed in enumerate(seeds):
                 suffix = self._suffix.format(var=var, seed=seed)
                 try:
+                    # Population densities
                     _N = np.load(self._ddir+"pred_population{suffix:s}.npy".format(suffix=suffix))
                     _M = np.load(self._ddir+"prey_population{suffix:s}.npy".format(suffix=suffix))
                     N[i,j] = np.mean(_N[-50:])
                     M[i,j] = np.mean(_M[-50:])
+                    # Environmental metrics
+                    _nI = np.load(self._ddir+f'isolated_patches{suffix}.npy')
+                    n_isolated[i,j] = np.cumsum(_nI)[-1]
+                    _eta_habitat = np.load(self._ddir+f'habitat_efficiency{suffix}.npy')
+                    eta_habitat[i,j] = np.mean(_eta_habitat[-50:])
+                    _poh = np.load(self._ddir+f'predators_on_habitat{suffix}.npy')
+                    predators_on_habitat[i,j] = np.mean(_poh[-50:])
                 except FileNotFoundError:
                     print(self._ddir)
                     print(suffix)
         # Save
         np.save(self._rdir+"N{suffix:s}".format(suffix=self.save_suffix), N)
         np.save(self._rdir+"M{suffix:s}".format(suffix=self.save_suffix), M)
+        np.save(self._rdir+f'num_isolated_patches{self.save_suffix}', n_isolated)
+        np.save(self._rdir+f'predators_on_habitat{self.save_suffix}', predators_on_habitat)
         # Print closing statements
         print("Computed quasistationary population densities for \n %s"%(self._printstr))
 
