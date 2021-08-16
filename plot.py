@@ -1,5 +1,6 @@
 """ Plot stuff """
 # Import necessary libraries
+import enum
 from os import MFD_ALLOW_SEALING
 import numpy as np 
 import matplotlib
@@ -12,7 +13,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import warnings
 from scipy import integrate
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, minimize
 from scipy.interpolate import interp1d
 from scipy.stats import gmean, lognorm
 from scipy.optimize import OptimizeWarning
@@ -507,7 +508,8 @@ class Plotter():
         # Load variables
         alpha_arr = np.loadtxt(_dir+'alpha.txt')
         H_arr = np.loadtxt(_dir+'H.txt')
-        fitax = np.linspace(min(alpha_arr), max(alpha_arr), 100)
+        fitax = np.linspace(min(alpha_arr), max(alpha_arr), 250)
+        seeds = np.loadtxt(_dir+'seeds.txt')
         # Initialize figure
         fig, axes = plt.subplots(2,1, figsize=(3.5,7/4*3), tight_layout=True)
         figR, axR = plt.subplots(1,1, figsize=(3.5,3.5/4*3), tight_layout=True)
@@ -522,34 +524,32 @@ class Plotter():
             _N = np.load(_rdir+'N{:s}.npy'.format(suffix)) / L**2
             _M = np.load(_rdir+'M{:s}.npy'.format(suffix)) / L**2
             N = np.mean(_N, axis=1) 
+            Nstd = np.std(_N, axis=1)
             M = np.mean(_M, axis=1) 
-            # Plot
+            # Plot            
             axes[0].plot(
                 alpha_arr, N, color=colors[i], marker=markers[i], mfc='white',
-                markersize=4, linewidth=0.85, label=r'$H=%.2f$'%(H)
+                markersize=3.25, linewidth=0.85, label=r'$H=%.2f$'%(H)
             )
             axes[1].plot(
                 alpha_arr, M, color=colors[i], marker=markers[i], mfc='white',
-                markersize=4, linewidth=0.85, label=r'$H=%.2f$'%(H)
+                markersize=3.25, linewidth=0.85, label=r'$H=%.2f$'%(H)
             )
-            R = (Plotter.true_diversity(N, M)-1)*(N+M)
+            _D = (Plotter.true_diversity(_N, _M)-1)
+            _R = _D * (_N+_M)
+            R = np.mean(_R, axis=1)
             axR.plot(
                 alpha_arr, R, color=colors[i], marker=markers[i], mfc='white',
-                markersize=4, linewidth=0.85, label=r'$H=%.2f$'%(H)
+                markersize=3.25, linewidth=0.85, label=r'$H=%.2f$'%(H)
             )
-            # Plot fit(s)
-            # popt, _ = curve_fit(Plotter.fit_func, alpha_arr, N)
-            # axes[0].plot(
-            #     fitax, Plotter.fit_func(fitax, *popt), color=colors[i],
-            #     linewidth=0.85, linestyle='--'
-            # )
         # Limits, labels, etc
         xlim = [1,2] if args.compute else [1,3]
         ylabels = [r'$N$', r'$M$', r'$\mathcal{R}$']
+        ylims = [1.05*args.rho / 2, 1.05*args.rho, 1.05*args.rho]
         _axes = [ax for ax in axes] + [axR]
         for i, ax in enumerate(_axes):          
             ax.set_xlim(xlim)
-            ax.set_ylim(bottom=0)
+            ax.set_ylim(0, ylims[i])
             ax.set_xlabel(r'$\alpha$', fontsize=16)
             ax.set_ylabel(ylabels[i], fontsize=16)
             if i < 2:
@@ -557,7 +557,7 @@ class Plotter():
                     0.0, 1.065, figlabels[i], ha='center', fontsize=14,
                     transform=ax.transAxes
                 )
-            if i >= 1:
+            if i == 1:
                 ax.legend(
                     loc='upper right', fontsize=11, ncol=1, labelspacing=0.1,
                     handletextpad=0.1, borderaxespad=0.1, handlelength=1,
@@ -880,7 +880,7 @@ class Plotter():
         ax.set_ylim(0, L)
     
     ################################
-    # Flight lengthr related plots #
+    # Flight length related plots #
     def plot_flight_distribution_Lambda(self, args, xmin=1, xmax=None):
         """ Plot the distribution over flight lengths for different Λ """ 
         _dir = args.ddir+"sllvm/flights/{L:d}x{L:d}/".format(L=2**args.m)
@@ -928,6 +928,65 @@ class Plotter():
             loc='lower left', fontsize=14, handlelength=1, handletextpad=0.1, 
             labelspacing=0.2, frameon=False
         )
+    
+    #######################################
+    # Environmental metrics related plots #
+    def plot_environmental_metrics_alpha(self, args):
+        """ Plot measures environmental metrics vs Levy parameter α """
+        L = 2**args.m
+        # Specify directory        
+        _dir = args.rdir+'sllvm/alpha/'
+        _rdir = args.rdir+'sllvm/alpha/{L:d}x{L:d}/'.format(L=L)
+        if args.compute:
+            _rdir = _rdir+'fit/'
+            _dir = _rdir
+        
+        # Load variables
+        alpha_arr = np.loadtxt(_dir+'alpha.txt')
+        H_arr = np.loadtxt(_dir+'H.txt')
+        fitax = np.linspace(min(alpha_arr), max(alpha_arr), 250)
+        seeds = np.loadtxt(_dir+'seeds.txt')
+        # Initialize figure
+        fig, axes = plt.subplots(1,2, figsize=(7,3.5/4*3), tight_layout=True)
+        # Load data & plot 
+        for i, H in enumerate(H_arr):
+            Hlab = rf'{H:.4f}' if i == len(H_arr)-1 else rf'{H:.2f}'
+            # Load data
+            suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_' \
+                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
+                args.T, args.N0, args.M0, H, 
+                args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
+            )
+            # Load
+            _nI = np.load(_rdir+f'num_isolated_patches{suffix}.npy')
+            nI = 1 - np.mean(_nI, axis=1) / (args.rho*L**2)
+            _N = np.load(_rdir+f'N{suffix}.npy')
+            _poh = np.load(_rdir+f'predators_on_habitat{suffix}.npy')
+            _poh = np.ma.divide(_poh, _N).filled(np.nan)
+            poh = np.nanmean(_poh, axis=1)
+            # Plot
+            axes[0].plot(
+                alpha_arr, nI, color=colors[i], marker=markers[i], mfc='white',
+                markersize=3.5, linewidth=0.85, label=rf'$H={Hlab:s}$'
+            )
+            axes[1].plot(
+                alpha_arr, poh, color=colors[i], marker=markers[i], mfc='white',
+                markersize=3.5, linewidth=0.85, label=rf'$H={Hlab:s}$'
+            )
+        # Limits, labels, etc
+        ylabels = [r'$\rho_{eff}$', r'$N_h / N$']
+        for i, ax in enumerate(axes):
+            ax.set_xlim(1, max(alpha_arr))
+            ax.set_ylim(0, 1)
+            ax.set_xlabel(r'$\alpha$', fontsize=16)
+            ax.set_ylabel(ylabels[i], fontsize=16)
+            if i == 0:
+                ax.legend(
+                    loc='lower left', fontsize=12, labelspacing=0.05, handlelength=1, 
+                    borderaxespad=0.05, handletextpad=0.2, frameon=False
+                )
+
+            
         
     
 
@@ -946,7 +1005,7 @@ if __name__ == "__main__":
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
     # Pjotr.plot_population_densities(args)
-    Pjotr.plot_population_densities_alpha(args)
+    # Pjotr.plot_population_densities_alpha(args)
     # Pjotr.plot_population_densities_lambda(args)
     # Pjotr.plot_population_densities_sigma(args)
     # Pjotr.plot_population_densities_H(args)
@@ -955,7 +1014,8 @@ if __name__ == "__main__":
     ## Flight length related plots
     # Pjotr.plot_flight_distribution_Lambda(args)
 
-    ## Dynamical system related plots
+    ## Environmental related plots
+    Pjotr.plot_environmental_metrics_alpha(args)
     
     if not args.save:
         plt.show()
