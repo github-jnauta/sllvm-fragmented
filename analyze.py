@@ -143,6 +143,28 @@ class Analyzer():
                 args.T, args.N0, args.M0, args.H,
                 args.rho, args.Lambda_, args.mu, args.sigma, args.alpha
             )
+        elif args.argument == 'habitat_loss':
+            self._suffix = (
+                '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_mu{:.4f}'
+                '_Lambda{:.4f}_lambda{:.4f}_sigma{:.4f}_alpha{:.3f}_seed{:s}'.format(
+                    args.T, args.N0, args.M0, args.H, args.rho, args.mu,
+                    args.Lambda_, args.lambda_, args.sigma, args.alpha, '{seed:d}'
+                )
+            )
+            self._printstr = (
+                '{L}x{L} lattice, H={H:.4f}, \u03C1={rho:.3f}, T={T:d}, ' \
+                '\u039B={Lambda_:.4f}, \u03B1={alpha:.3f}, ' \
+                '\u03BC={mu:.4f}, \u03C3={sigma:.4f}'.format(
+                    L=2**args.m, H=args.H, rho=args.rho, T=args.T,
+                    Lambda_=args.Lambda_, alpha=args.alpha,
+                    mu=args.mu, sigma=args.sigma
+                )
+            )
+            self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}' \
+                '_Lambda{:.4f}_mu{:.4f}_sigma{:.4f}_alpha{:.3f}'.format(
+                args.T, args.N0, args.M0, args.H,
+                args.rho, args.Lambda_, args.mu, args.sigma, args.alpha
+            )
         else:
             print('No specified suffix structure for given argument: {:s}'.format(args.argument))
             exit()
@@ -206,20 +228,41 @@ class Analyzer():
             suffix = self._suffix.format(seed=seed)
             N[:,i] = np.load(self._ddir+f'pred_population{suffix}.npy')
             M[:,i] = np.load(self._ddir+f'prey_population{suffix}.npy')
-            _ph = np.ma.divide(np.load(self._ddir+f'predators_on_habitat{suffix}.npy'), N[:,i]).filled(0)
-            I = np.load(self._ddir+f'isolated_patches{suffix}.npy').astype(float)
-            I = np.cumsum(I)
-            I /= args.rho * L**2
+            #_ph = np.ma.divide(np.load(self._ddir+f'predators_on_habitat{suffix}.npy'), N[:,i]).filled(0)
+            #I = np.load(self._ddir+f'isolated_patches{suffix}.npy').astype(float)
+            #I = np.cumsum(I)
+            #I /= args.rho * L**2
             #I[:args.nmeasures//2+1] /= (args.rho * L**2)
             #I[args.nmeasures//2+1:] /= (args.rho/5*L**2)
-            etah[:,i] = 1 - I
+            #etah[:,i] = 1 - I
         # Save
         np.save(self._rdir+f'N{self._save_suffix}', N)
         np.save(self._rdir+f'M{self._save_suffix}', M)
-        np.save(self._rdir+f'ph{self._save_suffix}', ph)
-        np.save(self._rdir+f'etah{self._save_suffix}', etah)
+        #np.save(self._rdir+f'ph{self._save_suffix}', ph)
+        #np.save(self._rdir+f'etah{self._save_suffix}', etah)
         # Print colsing statements
         print(f'Computed population dynamics for \n {self._printstr}')
+
+    def compute_environment_loss(self, args):
+        """ Compute the environment loss as the probability of a patch to be 
+            depleted (unhabitable) as a function of patch size 
+        """
+        L = 2**args.m 
+        # Get directories based on the argument
+        self._get_string_dependent_vars(args)
+        # Load variable arrays
+        seeds = np.loadtxt(self._dir+'seeds.txt', dtype=int)
+        # Allocate
+        patchbins = np.logspace(0, np.log10(args.rho*L**2+1), num=args.nbins, dtype=np.int64)
+        patchbins = np.unique(patchbins)
+        P = np.zeros((len(patchbins), len(seeds)))
+        # Load data
+        for i, seed in enumerate(seeds):
+            suffix = self._suffix.format(var=args.alpha, seed=seed)
+            P[:,i] = np.load(self._ddir+f'prob_patch_depletion{suffix}.npy')
+        # Save
+        np.save(self._rdir+f'prob_patch_depletion{self.save_suffix}', P)
+        print(f'Computed habitat/environment loss for \n {self._printstr}')
 
 
 if __name__ == "__main__":
@@ -228,8 +271,9 @@ if __name__ == "__main__":
     args = Argus.args 
     Analyze = Analyzer() 
     # Analyze
-    Analyze.compute_population_densities(args)
-    # Analyze.compute_density_evolution(args)
+    # Analyze.compute_population_densities(args)
+    Analyze.compute_density_evolution(args)
+    # Analyze.compute_environment_loss(args)
     
 
     

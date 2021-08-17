@@ -510,6 +510,7 @@ class SLLVM(object):
         # Analyze depleted patches
         empty_labels = output[7]
         patchbins = np.logspace(0, np.log10(args.rho*L**2+1), num=args.nbins, dtype=np.int64)
+        patchbins = np.unique(patchbins)
         patchhist = np.zeros(len(patchbins), dtype=np.int32)
         patchsizes = np.zeros(len(patchbins))        
         for label in empty_labels:
