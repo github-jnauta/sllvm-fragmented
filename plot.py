@@ -363,7 +363,6 @@ class Plotter():
         xax = args.T / args.nmeasures * np.arange(args.nmeasures+1)
         # Initialize figure
         fig, axes = plt.subplots(3,2, figsize=(4.5,8/4*3), tight_layout=True)
-        # axin = axes[0].inset_axes([0.58,0.62,0.35,0.35])
         # Plot
         for i, alpha in enumerate(alpha_arr):
             for j, H in enumerate(H_arr):
@@ -376,8 +375,6 @@ class Plotter():
                 # Plot population density
                 _N = np.load(_rdir+"N%s.npy"%(suffix)) 
                 _M = np.load(_rdir+"M%s.npy"%(suffix)) 
-                # N = _N[:,0] / L**2 
-                # M = _M[:,0] / L**2
                 N = np.mean(_N, axis=1) / L**2 
                 M = np.mean(_M, axis=1) / L**2
                 axes[i,0].plot(
@@ -386,31 +383,13 @@ class Plotter():
                 axes[i,1].plot(
                     xax, M, color=colors[j], linewidth=0.85
                 )
-                # R = (Plotter.true_diversity(N, M)-1)*(N+M)
-                # axes[1].plot(
-                #     xax, R, color=colors[i], linestyle='--', linewidth=0.85
-                # )
-                # Plot predators on habitat
-                # _ph = np.load(_rdir+"ph%s.npy"%(suffix))
-                # ph = np.mean(_ph, axis=1)
-                # axin.plot(
-                #     xax, ph, color=colors[i], linewidth=0.85
-                # )
-                # # Plot habitat efficiency
-                # _etah = np.load(_rdir+"etah%s.npy"%(suffix))
-                # etah = np.mean(_etah, axis=1)
-                # axes[1].plot(
-                #     xax, etah, color=colors[i], linewidth=0.85, label=rf'$\alpha={alpha:.2f}$'
-                # )
         # Limits, labels, etc
         ylabels = [r'$N(t)$', r'$M(t)$']
         alphalabels = [r'$\alpha=1.1$', r'$\alpha=2.0$', r'$\alpha=3.0$']
         j = 0
         for i, ax in enumerate(axes.flatten()):
             ax.set_xlim(0, args.T)
-            # ax.set_xticks([0+500*i for i in range(6)])   
             ax.xaxis.set_minor_locator(MultipleLocator(500))
-            # ax.tick_params(axis='x', labelsize=8)
             ax.set_ylim(0,0.25)
             if i == 0:
                 ax.legend(
@@ -521,11 +500,13 @@ class Plotter():
         
         # Load variables
         alpha_arr = np.loadtxt(_dir+'alpha.txt')
+        idx_2 = np.argmax(alpha_arr==2.)
         H_arr = np.loadtxt(_dir+'H.txt')
         fitax = np.linspace(min(alpha_arr), max(alpha_arr), 250)
         seeds = np.loadtxt(_dir+'seeds.txt')
         # Initialize figure
         fig, axes = plt.subplots(2,1, figsize=(3.5,7/4*3), tight_layout=True)
+        axin = axes[1].inset_axes([0.42,0.42,0.4*4/3,0.5])
         figR, axR = plt.subplots(1,1, figsize=(3.5,3.5/4*3), tight_layout=True)
         # Load data & plot 
         for i, H in enumerate(H_arr):
@@ -549,6 +530,10 @@ class Plotter():
                 alpha_arr, M, color=colors[i], marker=markers[i], mfc='white',
                 markersize=3.25, linewidth=0.85, label=r'$H=%.2f$'%(H)
             )
+            axin.plot(
+                alpha_arr[:idx_2+1], M[:idx_2+1], color=colors[i], marker=markers[i],
+                mfc='white', markersize=3.25, linewidth=0.75, label=r'$H=%.2f$'%(H)
+            )
             _D = (Plotter.true_diversity(_N, _M)-1)
             _R = _D * (_N+_M)
             R = np.mean(_R, axis=1)
@@ -560,9 +545,14 @@ class Plotter():
         xlim = [1,2] if args.compute else [1,max(alpha_arr)]
         ylabels = [r'$N$', r'$M$', r'$\mathcal{R}$']
         ylims = [1.05*args.rho / 2, 1.05*args.rho, 1.05*args.rho]
+        axin.set_xlim(1,2)
+        axin.set_ylim(0.,ylims[1])
+        axin.set_xlabel(r'$\alpha$', fontsize=12)
+        axin.set_ylabel(r'$M$', fontsize=12)
         _axes = [ax for ax in axes] + [axR]
         for i, ax in enumerate(_axes):          
             ax.set_xlim(xlim)
+            ax.set_xticks([1+0.5*i for i in range(7)])
             ax.set_ylim(0, ylims[i])
             ax.set_xlabel(r'$\alpha$', fontsize=16)
             ax.set_ylabel(ylabels[i], fontsize=16)
@@ -571,12 +561,15 @@ class Plotter():
                     0.0, 1.065, figlabels[i], ha='center', fontsize=14,
                     transform=ax.transAxes
                 )
-            if i >= 1:
+            if i%2==0:
                 ax.legend(
-                    loc='upper right', fontsize=13, ncol=1, labelspacing=0.1,
+                    loc='upper right', fontsize=11, ncol=1, labelspacing=0.1,
                     handletextpad=0.1, borderaxespad=0.1, handlelength=1,
                     columnspacing=0.6, frameon=False
                 )
+            else:
+                axin.xaxis.set_minor_locator(MultipleLocator(0.125))
+            ax.xaxis.set_minor_locator(MultipleLocator(0.25))
                 
          
         # Save
@@ -1104,13 +1097,13 @@ class Plotter():
         ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
         ax.set_ylim(0, 1.05)
         ax.set_xlabel(r'$x / \rho L^2$', fontsize=16)
-        ax.set_ylabel(r'$P_{loss}(x)$', fontsize=16)
+        ax.set_ylabel(r'$P_d$', fontsize=16)
         ax.legend(
-            loc='upper right', fontsize=12, labelspacing=0., handlelength=1,
+            loc='upper right', fontsize=11, labelspacing=0., handlelength=1,
             borderaxespad=0., handletextpad=0.2, frameon=False
         )
         # Save 
-        self.figdict[f'habitat_loss__H{args.H:.4f}_rho{args.rho:.2f}'] = fig 
+        self.figdict[f'habitat_loss_H{args.H:.4f}_rho{args.rho:.2f}'] = fig 
 
 
             
@@ -1130,9 +1123,9 @@ if __name__ == "__main__":
     # Pjotr.plot_patch_distribution(args)
 
     ## Population density related plots
-    Pjotr.plot_population_dynamics(args)
+    # Pjotr.plot_population_dynamics(args)
     # Pjotr.plot_population_densities(args)
-    # Pjotr.plot_population_densities_alpha(args)
+    Pjotr.plot_population_densities_alpha(args)
     # Pjotr.plot_population_densities_lambda(args)
     # Pjotr.plot_population_densities_sigma(args)
     # Pjotr.plot_population_densities_H(args)
