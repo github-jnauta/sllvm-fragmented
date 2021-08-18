@@ -506,7 +506,7 @@ class Plotter():
         seeds = np.loadtxt(_dir+'seeds.txt')
         # Initialize figure
         fig, axes = plt.subplots(2,1, figsize=(3.5,7/4*3), tight_layout=True)
-        axin = axes[1].inset_axes([0.42,0.42,0.4*4/3,0.5])
+        # axin = axes[1].inset_axes([0.42,0.42,0.4*4/3,0.5])
         figR, axR = plt.subplots(1,1, figsize=(3.5,3.5/4*3), tight_layout=True)
         # Load data & plot 
         for i, H in enumerate(H_arr):
@@ -530,10 +530,10 @@ class Plotter():
                 alpha_arr, M, color=colors[i], marker=markers[i], mfc='white',
                 markersize=3.25, linewidth=0.85, label=r'$H=%.2f$'%(H)
             )
-            axin.plot(
-                alpha_arr[:idx_2+1], M[:idx_2+1], color=colors[i], marker=markers[i],
-                mfc='white', markersize=3.25, linewidth=0.75, label=r'$H=%.2f$'%(H)
-            )
+            # axin.plot(
+            #     alpha_arr[:idx_2+1], M[:idx_2+1], color=colors[i], marker=markers[i],
+            #     mfc='white', markersize=3.25, linewidth=0.75, label=r'$H=%.2f$'%(H)
+            # )
             _D = (Plotter.true_diversity(_N, _M)-1)
             _R = _D * (_N+_M)
             R = np.mean(_R, axis=1)
@@ -545,10 +545,10 @@ class Plotter():
         xlim = [1,2] if args.compute else [1,max(alpha_arr)]
         ylabels = [r'$N$', r'$M$', r'$\mathcal{R}$']
         ylims = [1.05*args.rho / 2, 1.05*args.rho, 1.05*args.rho]
-        axin.set_xlim(1,2)
-        axin.set_ylim(0.,ylims[1])
-        axin.set_xlabel(r'$\alpha$', fontsize=12)
-        axin.set_ylabel(r'$M$', fontsize=12)
+        # axin.set_xlim(1,2)
+        # axin.set_ylim(0.,ylims[1])
+        # axin.set_xlabel(r'$\alpha$', fontsize=12)
+        # axin.set_ylabel(r'$M$', fontsize=12)
         _axes = [ax for ax in axes] + [axR]
         for i, ax in enumerate(_axes):          
             ax.set_xlim(xlim)
@@ -567,8 +567,8 @@ class Plotter():
                     handletextpad=0.1, borderaxespad=0.1, handlelength=1,
                     columnspacing=0.6, frameon=False
                 )
-            else:
-                axin.xaxis.set_minor_locator(MultipleLocator(0.125))
+            # else:
+            #     axin.xaxis.set_minor_locator(MultipleLocator(0.125))
             ax.xaxis.set_minor_locator(MultipleLocator(0.25))
                 
          
@@ -872,23 +872,41 @@ class Plotter():
         # Load variable arrays
         H_arr = np.loadtxt(_dir+'H.txt')
         # Initialize figure
-        fig, ax = plt.subplots(1,1, figsize=(5,3.5), tight_layout=True)
+        fig, ax = plt.subplots(1,1, figsize=(3.5,3.5/4*3), tight_layout=True)
         # Load data
         suffix = '_T{:d}_N{:d}_M{:d}_rho{:.3f}_' \
             'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
             args.T, args.N0, args.M0,
             args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
         )
-        alphastar_N = np.load(_rdir+f'alphastar_N{suffix}.npy')
-        alphastar_R = np.load(_rdir+f'alphastar_R{suffix}.npy')
-        ax.plot(
-            H_arr, alphastar_N, color='k', marker='o', mfc='white', markersize=4,
+        _alphastar_N = np.load(_rdir+f'alphastar_N{suffix}.npy')
+        _alphastar_R = np.load(_rdir+f'alphastar_R{suffix}.npy')
+        alphastar_N = np.mean(_alphastar_N, axis=1)
+        alphastar_R = np.mean(_alphastar_R, axis=1)
+        alphastar_Nstd = np.std(_alphastar_N, axis=1)
+        alphastar_Rstd = np.std(_alphastar_R, axis=1)
+        ax.errorbar(
+            H_arr, alphastar_N, yerr=alphastar_Nstd, capsize=1.5,
+            color='k', marker='o', mfc='white', markersize=3.5,
             linewidth=0.85, label=r'$\alpha^*_N$'
         )
-        ax.plot(
-            H_arr, alphastar_R, color='navy', marker='D', mfc='white', markersize=4,
-            linewidth=0.85, label=r'$\alpha^*_R$'
+        ax.errorbar(
+            H_arr, alphastar_R, yerr=alphastar_Rstd, capsize=1.5,
+            color='navy', marker='D', mfc='white', markersize=3.5,
+            linestyle='--', linewidth=0.85, label=r'$\alpha^*_\mathcal{R}$'
         )
+        # Limits, labels, etc
+        ax.set_xlim(0,1)
+        ax.set_ylim(1,2)
+        ax.set_xlabel(r'$H$', fontsize=16)
+        ax.set_ylabel(r'$\alpha^*$', fontsize=16)
+        legend = ax.legend(
+            loc='upper right', fontsize=12, handlelength=1.5, handletextpad=0.4,
+            borderaxespad=0.1, labelspacing=0.5, frameon=False
+        )
+        plt.setp(legend.get_texts(), ha='left', va='center')
+        # Save
+        self.figdict[f'alphastar_rho{args.rho}'] = fig
 
     ###########################
     # Levy walk related plots #
@@ -1125,12 +1143,12 @@ if __name__ == "__main__":
     ## Population density related plots
     # Pjotr.plot_population_dynamics(args)
     # Pjotr.plot_population_densities(args)
-    Pjotr.plot_population_densities_alpha(args)
+    # Pjotr.plot_population_densities_alpha(args)
     # Pjotr.plot_population_densities_lambda(args)
     # Pjotr.plot_population_densities_sigma(args)
     # Pjotr.plot_population_densities_H(args)
     # Pjotr.plot_population_phase_space(args)
-    # Pjotr.plot_optimal_alpha(args)
+    Pjotr.plot_optimal_alpha(args)
 
     ## Flight length related plots
     # Pjotr.plot_flight_distribution_Lambda(args)
@@ -1145,3 +1163,4 @@ if __name__ == "__main__":
         for figname, fig in Pjotr.figdict.items():
             print("Saving {}...".format(figname))
             fig.savefig("figures/{}.pdf".format(figname), bbox_inches='tight')
+        
