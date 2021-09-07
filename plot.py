@@ -10,6 +10,7 @@ from matplotlib import animation
 from matplotlib import rcParams
 from matplotlib.lines import Line2D
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib.ticker import MultipleLocator
 
 import warnings
@@ -684,57 +685,51 @@ class Plotter():
         _dir = args.rdir+'sllvm/H/'
         _rdir = args.rdir+'sllvm/H/{L:d}x{L:d}/'.format(L=L)
         # Load variables
-        alpha_arr = np.loadtxt(_dir+'alpha.txt')
-        H_arr = np.loadtxt(_dir+'H.txt')[10:]
+        # alpha_arr = np.loadtxt(_dir+'alpha.txt')
+        alpha_arr = [1.1, 1.5, 2.0, 2.5, 3.0]
+        H_arr = np.loadtxt(_dir+'H.txt')
         # Initialize figure
-        fig, axes = plt.subplots(1,3, figsize=(3*3.5,3.5/4*3), tight_layout=True)
+        fig, axes = plt.subplots(1,2, figsize=(2*3.5,3.5/4*3), tight_layout=True)
+        figR, axR = plt.subplots(1,1, figsize=(3.5,3.5/4*3), tight_layout=True)
         # Load data & plot 
-        for i, H in enumerate(H_arr):
-            suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_' \
-                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
-                args.T, args.N0, args.M0, H,
-                args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
+        for i, alpha in enumerate(alpha_arr):
+            suffix = '_T{:d}_N{:d}_M{:d}_rho{:.3f}_' \
+                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}_alpha{:.3f}'.format(
+                args.T, args.N0, args.M0,
+                args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma, alpha
             )
-            try:
-                _N = np.load(_rdir+f'N{suffix}.npy')
-                _M = np.load(_rdir+f'M{suffix}.npy')
-                N = np.mean(_N, axis=1) / L**2
-                M = np.mean(_M, axis=1) / L**2
-                ci = i % len(colors)
-                mi = i % len(markers)
-                axes[0].errorbar(
-                    alpha_arr, N, yerr=np.std(_N, axis=1)/L**2, capsize=3,
-                    color=colors[ci], marker=markers[mi], mfc='white',
-                    markersize=4, linewidth=0.85, label=rf'$H={H:.3f}$'
-                )
-                axes[1].plot(
-                    alpha_arr, M, color=colors[ci], marker=markers[mi], mfc='white',
-                    markersize=4, linewidth=0.85, label=rf'$H={H:.3f}$'
-                )
-                R = (N+M) * (Plotter.true_diversity(N,M) - 1)
-                axes[2].plot(
-                    alpha_arr, R, color=colors[ci], marker=markers[mi], mfc='white',
-                    markersize=4, linewidth=0.85, label=rf'$H={H:.3f}$'
-                )
-                # Determine α* 
-                # alpha_star = np.mean(alpha_arr[np.argmax(_N, axis=0)])
-                # axes[0].plot(
-                #     [alpha_star, alpha_star], [0, 1], linestyle='--',
-                #     color=colors[ci], linewidth=0.75
-                # )
-            except FileNotFoundError:
-                print(suffix)
-                pass 
+            _N = np.load(_rdir+f'N{suffix}.npy') / L**2
+            _M = np.load(_rdir+f'M{suffix}.npy') / L**2
+            N = np.mean(_N, axis=1) 
+            M = np.mean(_M, axis=1) 
+            axes[0].plot(
+                H_arr, N,
+                color=colors[i], marker=markers[i], mfc='white',
+                markersize=4, linewidth=0.85, label=rf'$\alpha={alpha:.1f}$'
+            )
+            axes[1].plot(
+                H_arr, M, color=colors[i], marker=markers[i], mfc='white',
+                markersize=4, linewidth=0.85, label=rf'$\alpha={alpha:.1f}$'
+            )
+            _D = Plotter.true_diversity(_N, _M)
+            _R = (_D-1)*(_N+_M)
+            R = np.mean(_R, axis=1)
+            axR.plot(
+                H_arr, R, color=colors[i], marker=markers[i], mfc='white',
+                markersize=4, linewidth=0.85, label=rf'$\alpha={alpha:.1f}$'
+            )
         # Limits, labels, etc
+        ylabels = [r'$N$', r'$M$', r'$\mathcal{R}$']
+        axes = list(axes) + [axR]
         for i, ax in enumerate(axes):
-            ax.set_xlim(1, 3)
+            ax.set_xlim(0, 1)
             ax.set_ylim(bottom=0)
-            ax.set_xlabel(r'$\alpha$', fontsize=16)
-            ax.set_ylabel(r'population', fontsize=16)
-            if i == 1:
+            ax.set_xlabel(r'$H$', fontsize=16)
+            ax.set_ylabel(ylabels[i], fontsize=16)
+            if i > 0:
                 ax.legend(
-                    loc='upper right', fontsize=10, frameon=False, labelspacing=0.2,
-                    handletextpad=0.2, handlelength=1
+                    loc='upper right', fontsize=12, frameon=False, labelspacing=0.1,
+                    handletextpad=0.1, handlelength=1, borderaxespad=0
                 )
 
     def plot_population_densities_sigma(self, args):
@@ -885,6 +880,7 @@ class Plotter():
         alphastar_R = np.mean(_alphastar_R, axis=1)
         alphastar_Nstd = np.std(_alphastar_N, axis=1)
         alphastar_Rstd = np.std(_alphastar_R, axis=1)
+        # Plot data
         ax.errorbar(
             H_arr, alphastar_N, yerr=alphastar_Nstd, capsize=1.5,
             color='k', marker='o', mfc='white', markersize=3.5,
@@ -895,13 +891,37 @@ class Plotter():
             color='navy', marker='D', mfc='white', markersize=3.5,
             linestyle='--', linewidth=0.85, label=r'$\alpha^*_\mathcal{R}$'
         )
+        H_plot = [0.01, 0.2, 0.5, 1.]
+        for __H in H_plot:
+            print(__H, alphastar_R[np.argwhere(H_arr==__H)])
+        # Plot helpers
+        _latticedir = args.ddir+'landscapes/'
+        suffix = '_{L:d}x{L:d}_H{H:.3f}_rho{rho:.3f}'.format(L=L, H=0.99, rho=args.rho)
+        lattice_lo = np.load(_latticedir+"lattice{suffix:s}.npy".format(suffix=suffix))
+        suffix = '_{L:d}x{L:d}_H{H:.3f}_rho{rho:.3f}'.format(L=L, H=0.01, rho=args.rho)
+        lattice_hi = np.load(_latticedir+"lattice{suffix:s}.npy".format(suffix=suffix))
+        axin_hi = ax.inset_axes([-0.0325,0.01,0.3,0.3])
+        axin_hi.imshow(lattice_hi, cmap='Greys')
+        axin_lo = ax.inset_axes([0.735,0.68,0.3,0.3])
+        axin_lo.imshow(lattice_lo, cmap='Greys')
+        axin_hi.text(
+            1.2,0.5, r'$H\rightarrow 0$', fontsize=9, rotation=90, 
+            ha='center', va='center', transform=axin_hi.transAxes
+        )
+        axin_lo.text(
+            -0.2,0.5, r'$H\rightarrow 1$', fontsize=9, rotation=90, 
+            ha='center', va='center', transform=axin_lo.transAxes
+        )
+        for axin in [axin_hi, axin_lo]:
+            axin.xaxis.set_visible(False)
+            axin.yaxis.set_visible(False)
         # Limits, labels, etc
         ax.set_xlim(0,1)
         ax.set_ylim(1,2)
         ax.set_xlabel(r'$H$', fontsize=16)
         ax.set_ylabel(r'$\alpha^*$', fontsize=16)
         legend = ax.legend(
-            loc='upper right', fontsize=12, handlelength=1.5, handletextpad=0.4,
+            loc='upper center', fontsize=12, handlelength=1.5, handletextpad=0.4,
             borderaxespad=0.1, labelspacing=0.5, frameon=False
         )
         plt.setp(legend.get_texts(), ha='left', va='center')
@@ -1068,8 +1088,8 @@ class Plotter():
         patchbins = patchbins / (args.rho*L**2)
         fitax = np.logspace(0, np.log10(args.rho*L**2+1), num=10*args.nbins) / (args.rho*L**2)
         # Initialize figure
-        fig, ax = plt.subplots(1,1, figsize=(3.5,3.5/4*3), tight_layout=True)
-        # Load & plot
+        fig, axes = plt.subplots(1,2, figsize=(7,3.5/4*3), tight_layout=True)
+        # Load & plot for different alpha
         for i, alpha in enumerate(alpha_arr):
             # Load
             suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_' \
@@ -1084,41 +1104,66 @@ class Plotter():
             popt, _ = curve_fit(Plotter.tanh, np.log10(patchbins), P)
             fit = np.minimum(1, Plotter.tanh(np.log10(fitax), *popt))
             # Plot
-            ax.semilogx(fitax, fit, color=colors[i], linewidth=0.85)
-            ax.semilogx(
+            axes[0].semilogx(fitax, fit, color=colors[i], linewidth=0.85)
+            axes[0].semilogx(
                 patchbins, P,
                 color=colors[i], marker=markers[i], mfc='white', markersize=3.5,
                 linestyle='none', label=rf'$\alpha={alpha:.1f}$'
             )
+        # Load & plot for different H 
+        H_arr = np.loadtxt(_dir+'H.txt')
+        alpha_arr = np.loadtxt(_dir+'alpha.txt')
+        for i, (H, alpha) in enumerate(zip(H_arr,alpha_arr)):
+            # Load
+            suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_' \
+                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}_alpha{:.3f}'.format(
+                args.T, args.N0, args.M0, H,
+                args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma, alpha
+            )
+            _P = np.load(_rdir+f'prob_patch_depletion{suffix}.npy')
+            P = np.mean(_P, axis=1)
+            Pstd = np.std(_P, axis=1)
+            # Compute fit 
+            popt, _ = curve_fit(Plotter.tanh, np.log10(patchbins), P)
+            fit = np.minimum(1, Plotter.tanh(np.log10(fitax), *popt))
+            # Plot
+            axes[1].plot(fitax, fit, color=colors[i], linewidth=0.85)
+            axes[1].semilogx(
+                patchbins, P,
+                color=colors[i], marker=markers[i], mfc='white', markersize=3.5,
+                linestyle='none', label=rf'$H={H:.2f}, \alpha={alpha:.2f}$'
+            )
         # Helper lines
-        ax.semilogx(
-            [min(patchbins),min(patchbins)], [0,1.05], color='k', linestyle=':', 
-            linewidth=0.65
-        )
-        ax.text(
-            0.1, 0.05, r'$x=1$', rotation=90, ha='center', va='bottom', fontsize=11,
-            transform=ax.transAxes
-        )
-        ax.semilogx(
-            [max(patchbins),max(patchbins)], [0,0.5], color='k', linestyle=':', 
-            linewidth=0.65
-        )
-        ax.text(
-            0.95, 0.05, r'$x=\rho L^2$', rotation=90, ha='center', va='bottom', 
-            fontsize=11, transform=ax.transAxes
-        )
-        # Limits, labels, etc        
-        ax.set_xlim(min(patchbins), 4)
-        ax.set_xticks([10**i for i in range(-5,1,1)])
-        locmin = matplotlib.ticker.LogLocator(base=10.0, subs=np.arange(2, 10)*.1, numticks=100)
-        ax.xaxis.set_minor_locator(locmin)
-        ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
-        ax.set_ylim(0, 1.05)
-        ax.set_xlabel(r'$x / \rho L^2$', fontsize=16)
-        ax.set_ylabel(r'$P_d$', fontsize=16)
-        ax.legend(
-            loc='upper right', fontsize=11, labelspacing=0., handlelength=1,
-            borderaxespad=0., handletextpad=0.2, frameon=False
+        for i, ax in enumerate(axes):
+            ax.semilogx(
+                [min(patchbins),min(patchbins)], [0,1.05], color='k', linestyle=':', 
+                linewidth=0.65
+            )
+            ax.semilogx(
+                [max(patchbins),max(patchbins)], [0,0.5], color='k', linestyle=':', 
+                linewidth=0.65
+            )
+            if i == 0:
+                ax.text(
+                    0.1, 0.05, r'$x=1$', rotation=90, ha='center', va='bottom', 
+                    fontsize=11, transform=ax.transAxes
+                )
+                ax.text(
+                    0.95, 0.05, r'$x=\rho L^2$', rotation=90, ha='center', va='bottom', 
+                    fontsize=11, transform=ax.transAxes
+                )
+            # Limits, labels, etc        
+            ax.set_xlim(min(patchbins), 4)
+            ax.set_xticks([10**i for i in range(-5,1,1)])
+            locmin = matplotlib.ticker.LogLocator(base=10.0, subs=np.arange(2, 10)*.1, numticks=100)
+            ax.xaxis.set_minor_locator(locmin)
+            ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+            ax.set_ylim(0, 1.05)
+            ax.set_xlabel(r'$x / \rho L^2$', fontsize=16)
+            ax.set_ylabel(r'$P_d$', fontsize=16)
+            ax.legend(
+                loc='upper right', fontsize=11, labelspacing=0., handlelength=1,
+                borderaxespad=0., handletextpad=0.2, frameon=False
         )
         # Save 
         self.figdict[f'habitat_loss_H{args.H:.4f}_rho{args.rho:.2f}'] = fig 
@@ -1148,14 +1193,14 @@ if __name__ == "__main__":
     # Pjotr.plot_population_densities_sigma(args)
     # Pjotr.plot_population_densities_H(args)
     # Pjotr.plot_population_phase_space(args)
-    Pjotr.plot_optimal_alpha(args)
+    # Pjotr.plot_optimal_alpha(args)
 
     ## Flight length related plots
     # Pjotr.plot_flight_distribution_Lambda(args)
 
     ## Environmental related plots
     # Pjotr.plot_environmental_metrics_alpha(args)
-    # Pjotr.plot_habitat_loss_probability(args)
+    Pjotr.plot_habitat_loss_probability(args)
     
     if not args.save:
         plt.show()
