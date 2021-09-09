@@ -150,8 +150,8 @@ def nb_SLLVM(
     treduce = T // 2                # Time at which habitat will be reduced
     _nn = 4                         # Number of nearest neighbors
     # Adapt some variables as they should take on a specific value if -1 is provided
-    mu = 1 / L if mu == -1 else mu              # Death rate 
-    N0 = np.int64(rho*L**2) if N0 == -1 else N0 # Initial number of predators
+    mu = 1 / L if mu == -1 else mu                          # Death rate     
+    N0 = np.int64(min(0.2,rho)*L**2) if N0 == -1 else N0    # Initial number of predators
     # Ensure the complementary CDF of the inverse power law is handles properly
     P = P_reduced if not reduce else P 
 
@@ -250,8 +250,6 @@ def nb_SLLVM(
                     # Do not count in future computations, as once a patch is depleted
                     # it will (and should) never become rehabitated.
                     empty_labels.append(label)
-                    # sites_patchlabels[i], sites_patchlabels[-1] = sites_patchlabels[-1], sites_patchlabels[i]
-                    # del sites_patchlabels[-1]
             # Store the lattice configuration
             if visualize:
                 lattice_configuration[sites>0,imeas] = 1
@@ -259,15 +257,19 @@ def nb_SLLVM(
                 lattice_configuration[pred_lattice>0,imeas] = 2
 
         ## Stop the simulation if:
-        # prey goes extinct, as predators will also go extinct
+        # (i) Prey goes extinct, as predators will also go extinct
         if M == 0:
             coexistence = 0
             break
-        # predators go extinct, as prey will fully occupy all available sites
-        if N == 0:
-            coexistence = 0
-            prey_population[imeas:] = np.sum(sites)
-            break 
+        # (ii) One can, in principle, also finish the simulation as predators go extinct,
+        # as it leads to the other zero-abundance stable state of prey proliferation.
+        # However, as habitat becomes (increasingly) fragmented, i.e. some habitat has
+        # become inhabitable, one must take this into account for the long-term stable
+        # state of the prey population. As other optimizations are in place, it is more
+        # easy to simply let the simulation continue, as the number of occupied states
+        # that are accounted for decreases fast, and thus the simulation should not take
+        # long when predators go extinct -- especially as this occurs incrementally such
+        # that prey proliferation is already occuring.
 
         ## Decrease the number of habitable sites halfway through the simulation
         if reduce == True and t == treduce:
@@ -329,7 +331,7 @@ def nb_SLLVM(
                     neighbor = neighbors[_nidx]
                     _is_empty = empty_sites[_nidx]
                     # If empty, place prey there with probability σ
-                    if _is_empty and  np.random.random() < sigma :
+                    if _is_empty and  np.random.random() < sigma:
                         prey_lattice[neighbor] = True       # Place prey on prey lattice
                         occupied_sites.append(neighbor)     # Append occupied site to the list
                         M += 1
@@ -393,7 +395,7 @@ def nb_SLLVM(
                         if prey_lattice[new_idx]:
                             _r = np.random.random()
                             ## (iv)(a) do not interact with prey with probability 1-Λ
-                            if _r < 1 - Lambda_lst[_pred_id]:                                
+                            if _r < 1 - Lambda_lst[_pred_id]:
                                 # Update predator lattice
                                 pred_lattice[new_idx] = pred_lattice[idx]
                                 pred_lattice[idx] = 0 
@@ -463,7 +465,7 @@ def nb_SLLVM(
                                 flight_lengths[bin] += 1
                             curr_length[_pred_id] = 0
     
-    return prey_population, pred_population, coexistence, flight_lengths, habitat_efficiency, predators_on_habitat, isolated_patches, lattice_configuration
+    return prey_population, pred_population, coexistence, flight_lengths, habitat_efficiency, predators_on_habitat, isolated_patches, empty_labels, lattice_configuration
 
 #################################
 # Wrapper for the numba modules #
@@ -477,15 +479,16 @@ class SLLVM(object):
 
     def run_system(self, args, xmin=1, xmax=None):
         # Compute the prey (resource) sites on the L x L lattice
-        _lattice = self.Lattice.SpectralSynthesis2D(2**args.m, args.H)
+        L = 2**args.m 
+        _lattice = self.Lattice.SpectralSynthesis2D(L, args.H)
         sites = self.Lattice.binary_lattice(_lattice, args.rho)
         reduced_sites = self.Lattice.binary_lattice(_lattice, args.rho/5)
         # Gather indices of the seperate patches of the habitable patches
         sites_patch_dict, num_patches = self.Lattice.label(sites)
         reduced_sites_patch_dict, num_reduced_patches = self.Lattice.label(reduced_sites)
         # Compute maximum flight length 
-        xmax = 200*2**args.m if not xmax else xmax 
-        xmax_measure = 2*2**args.m if not xmax else xmax 
+        xmax = 200*L if not xmax else xmax 
+        xmax_measure = 2*L if not xmax else xmax 
         # Pre-compute the bins for distribution over flight lenghts
         bins = np.logspace(np.log10(xmin), np.log10(xmax_measure), num=args.nbins, dtype=np.int64)
         bins = np.unique(bins)
@@ -507,6 +510,19 @@ class SLLVM(object):
             sites_patch_dict, reduced_sites_patch_dict,
             args.nmeasures, bins, args.visualize
         )
+        # Analyze depleted patches
+        empty_labels = output[7]
+        patchbins = np.logspace(0, np.log10(args.rho*L**2+1), num=args.nbins, dtype=np.int64)
+        patchbins = np.unique(patchbins)
+        patchhist = np.zeros(len(patchbins), dtype=np.int32)
+        patchsizes = np.zeros(len(patchbins))        
+        for label in empty_labels:
+            bin = np.searchsorted(bins, len(sites_patch_dict[label]))
+            patchhist[bin] += 1
+        for label, site_indices in sites_patch_dict.items():
+            bin = np.searchsorted(bins, len(site_indices))
+            patchsizes[bin] += 1
+        prob_patch_depletion = np.ma.divide(patchhist, patchsizes).filled(0)
         # Save
         outdict['prey_population'] = output[0]
         outdict['pred_population'] = output[1]
@@ -518,6 +534,7 @@ class SLLVM(object):
         outdict['isolated_patches'] = output[6]
         outdict['num_patches'] = num_patches
         outdict['num_reduced_patches'] = num_reduced_patches
+        outdict['prob_patch_depletion'] = prob_patch_depletion
         if args.visualize:
             outdict['lattice'] = output[-1]
         return outdict
