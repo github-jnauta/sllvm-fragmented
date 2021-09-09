@@ -84,27 +84,28 @@ class Analyzer():
                 args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
             )
         elif args.argument == 'H':
-            self._var_arr = np.loadtxt(self._dir+'{name:s}.txt'.format(name='alpha'))
+            self._dir = args.ddir+'sllvm/{arg:s}/{L:d}x{L:d}/'.format(arg='alpha', L=L)
+            self._var_arr = np.loadtxt(self._dir+'{name:s}.txt'.format(name=args.argument))
             self._suffix = (
-                '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}'
-                '_Lambda{:.4f}_lambda{:.4f}_sig{:.4f}_a{:s}_seed{:s}'.format(
-                    args.T, args.N0, args.M0, args.H, args.rho, args.mu,
-                    args.Lambda_, args.lambda_, args.sigma, '{var:.3f}', '{seed:d}'
+                '_T{:d}_N{:d}_M{:d}_H{:s}_rho{:.3f}_mu{:.4f}'
+                '_Lambda{:.4f}_lambda{:.4f}_sigma{:.4f}_alpha{:.3f}_seed{:s}'.format(
+                    args.T, args.N0, args.M0, '{var:.4f}', args.rho, args.mu,
+                    args.Lambda_, args.lambda_, args.sigma, args.alpha, '{seed:d}'
                 )
             )
             self._printstr = (
-                '{L}x{L} lattice, H={H:.3f}, \u03C1={rho:.3f}, T={T:d}, ' \
+                '{L}x{L} lattice, \u03C1={rho:.3f}, T={T:d}, ' \
                 '\u039B={Lambda_:.4f}, \u03BB={lambda_:.4f}, ' \
-                '\u03BC={mu:.4f}, \u03C3={sigma:.4f}'.format(
+                '\u03BC={mu:.4f}, \u03C3={sigma:.4f}, \u03B1={alpha:.3f}'.format(
                     L=2**args.m, H=args.H, rho=args.rho, T=args.T,
                     Lambda_=args.Lambda_, lambda_=args.lambda_,
-                    mu=args.mu, sigma=args.sigma
+                    mu=args.mu, sigma=args.sigma, alpha=args.alpha
                 )
             )
-            self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_' \
-                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
-                args.T, args.N0, args.M0, args.H,
-                args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
+            self.save_suffix = '_T{:d}_N{:d}_M{:d}_rho{:.3f}_' \
+                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}_alpha{:.3f}'.format(
+                args.T, args.N0, args.M0,
+                args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma, args.alpha
             )
         elif args.argument == 'evolution':
             self._suffix = (
@@ -131,27 +132,25 @@ class Analyzer():
                 )
             )
         elif args.argument == 'sigma':
-            self._var_arr = np.loadtxt(self._dir+'{name:s}.txt'.format(name='lambda'))
+            self._var_arr = np.loadtxt(self._dir+'{name:s}.txt'.format(name=args.argument))
             self._suffix = (
                 '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_mu{:.4f}'
-                '_Lambda{:.4f}_lambda{:s}_sigma{:.4f}_alpha{:.3f}_seed{:s}'.format(
+                '_Lambda{:.4f}_lambda{:.4f}_sigma{:}_alpha{:.3f}_seed{:s}'.format(
                     args.T, args.N0, args.M0, args.H, args.rho, args.mu,
-                    args.Lambda_, '{var:.4f}', args.sigma, args.alpha, '{seed:d}'
+                    args.Lambda_, args.lambda_, '{var:.4f}', args.alpha, '{seed:d}'
                 )
             )
             self._printstr = (
                 '{L}x{L} lattice, H={H:.4f}, \u03C1={rho:.3f}, T={T:d}, ' \
-                '\u039B={Lambda_:.4f}, \u03B1={alpha:.3f}, ' \
-                '\u03BC={mu:.4f}, \u03C3={sigma:.4f}'.format(
+                '\u039B={Lambda_:.4f}, \u03B1={alpha:.3f}, \u03BC={mu:.4f}'.format(
                     L=2**args.m, H=args.H, rho=args.rho, T=args.T,
-                    Lambda_=args.Lambda_, alpha=args.alpha,
-                    mu=args.mu, sigma=args.sigma
+                    Lambda_=args.Lambda_, alpha=args.alpha, mu=args.mu
                 )
             )
             self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}' \
-                '_Lambda{:.4f}_mu{:.4f}_sigma{:.4f}_alpha{:.3f}'.format(
+                '_Lambda{:.4f}_mu{:.4f}_alpha{:.3f}'.format(
                 args.T, args.N0, args.M0, args.H,
-                args.rho, args.Lambda_, args.mu, args.sigma, args.alpha
+                args.rho, args.Lambda_, args.mu, args.alpha
             )
         else:
             print('No specified suffix structure for given argument: {:s}'.format(args.argument))
@@ -170,6 +169,7 @@ class Analyzer():
         Nt = np.zeros((args.nmeasures, len(seeds)))
         Mt = np.zeros((args.nmeasures, len(seeds)))
         for i, var in enumerate(self._var_arr):
+            self._ddir = self._dir+'H{H:.4f}/'.format(H=args.H)
             for j, seed in enumerate(seeds):
                 suffix = self._suffix.format(var=var, seed=seed)
                 try:
@@ -239,17 +239,27 @@ class Analyzer():
             M = np.zeros((len(self._var_arr), len(seeds)))
             for j, alpha in enumerate(alpha_arr):
                 for k, seed in enumerate(seeds):
-                    suffix = self._suffix.format(var=alpha, seed=seed)
-                    _N = np.load(self._ddir+f'pred_population{suffix}.npy')
-                    _M = np.load(self._ddir+f'prey_population{suffix}.npy')
+                    _dir = args.ddir+'sllvm/{:s}/{L:d}x{L:d}/H{H:.4f}/'.format(
+                        args.argument, L=2**args.m, H=H
+                    )
+                    suffix = (
+                        '_T{:d}_N{:d}_M{:d}_H{:.4f}'
+                        '_rho{:.3f}_mu{:.4f}_Lambda{:.4f}_lambda{:.4f}_sigma{:.4f}_alpha{:.3f}'
+                        '_seed{:d}'.format(
+                            args.T, args.N0, args.M0, H, args.rho,
+                            args.mu, args.Lambda_, args.lambda_, args.sigma, alpha, seed
+                        )
+                    )    
+                    _N = np.load(_dir+f'pred_population{suffix}.npy')
+                    _M = np.load(_dir+f'prey_population{suffix}.npy')
                     N[j,k] = np.mean(_N[-50:])
                     M[j,k] = np.mean(_M[-50:])
             # Compute species richness
-            _D = Analyzer.true_diversity(_N, _M)
-            _R = (_D-1)*(_N+_M)
+            D = Analyzer.true_diversity(N, M)
+            R = (D-1)*(N+M)
             # Compute α*
-            alphastar_N[i,:] = alpha_arr[np.argmax(_N, axis=0)]
-            alphastar_R[i,:] = alpha_arr[np.argmax(_R, axis=0)]
+            alphastar_N[i,:] = alpha_arr[np.argmax(N, axis=0)]
+            alphastar_R[i,:] = alpha_arr[np.argmax(R, axis=0)]
         # Save
         np.save(self._rdir+f'alphastar_N{self.save_suffix}', alphastar_N)
         np.save(self._rdir+f'alphastar_R{self.save_suffix}', alphastar_R)
@@ -266,9 +276,9 @@ if __name__ == "__main__":
     args = Argus.args 
     Analyze = Analyzer() 
     # Analyze
-    # Analyze.compute_population_densities(args)
+    Analyze.compute_population_densities(args)
     # Analyze.compute_density_evolution(args)
-    Analyze.compute_alphastar_vs_H(args)
+    # Analyze.compute_alphastar_vs_H(args)
     
 
     
