@@ -271,8 +271,8 @@ if __name__ == "__main__":
     args = Argus.args 
     Analyze = Analyzer() 
     # Analyze
-    # Analyze.compute_population_densities(args)
-    Analyze.compute_density_evolution(args)
+    Analyze.compute_population_densities(args)
+    # Analyze.compute_density_evolution(args)
     # Analyze.compute_environment_loss(args)
     
 

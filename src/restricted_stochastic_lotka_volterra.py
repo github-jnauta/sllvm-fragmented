@@ -257,16 +257,19 @@ def nb_SLLVM(
                 lattice_configuration[pred_lattice>0,imeas] = 2
 
         ## Stop the simulation if:
-        # prey goes extinct, as predators will also go extinct
+        # (i) Prey goes extinct, as predators will also go extinct
         if M == 0:
             coexistence = 0
             break
-        # predators go extinct, as prey will fully occupy all available sites
-        if N == 0:
-            coexistence = 0
-            prey_population[imeas:] = np.sum(sites)
-            habitat_efficiency[imeas:] = np.sum(sites)
-            break 
+        # (ii) One can, in principle, also finish the simulation as predators go extinct,
+        # as it leads to the other zero-abundance stable state of prey proliferation.
+        # However, as habitat becomes (increasingly) fragmented, i.e. some habitat has
+        # become inhabitable, one must take this into account for the long-term stable
+        # state of the prey population. As other optimizations are in place, it is more
+        # easy to simply let the simulation continue, as the number of occupied states
+        # that are accounted for decreases fast, and thus the simulation should not take
+        # long when predators go extinct -- especially as this occurs incrementally such
+        # that prey proliferation is already occuring.
 
         ## Decrease the number of habitable sites halfway through the simulation
         if reduce == True and t == treduce:
