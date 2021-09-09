@@ -676,6 +676,61 @@ class Plotter():
         # Save
         self.figdict[f'population_densities_lambda_rho{args.rho}'] = fig 
 
+    def plot_population_densities_sigma(self, args):
+        """ Plot population densities as a function of σ for several α and H """
+        L = 2**args.m
+        # Specify directory
+        _dir = args.rdir+'sllvm/sigma/'
+        _rdir = args.rdir+'sllvm/sigma/{L:d}x{L:d}/'.format(L=L)
+        # Load variables
+        # alpha_arr = np.loadtxt(_dir+'alpha.txt')
+        alpha_arr = [3.0]
+        sigma_arr = np.loadtxt(_dir+'sigma.txt')
+        H_arr = np.loadtxt(_dir+'H.txt')
+        # Initialize figure
+        fig, axes = plt.subplots(1,2, figsize=(2*3.5,3.5/4*3), tight_layout=True)
+        figR, axR = plt.subplots(1,1, figsize=(3.5,3.5/4*3), tight_layout=True)
+        # Load & plot
+        for i, H in enumerate(H_arr):
+            for j, alpha in enumerate(alpha_arr):
+                suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}' \
+                    '_Lambda{:.4f}_mu{:.4f}_alpha{:.3f}'.format(
+                    args.T, args.N0, args.M0, H,
+                    args.rho, args.Lambda_, args.mu, alpha
+                )
+                # Load data
+                _N = np.load(_rdir+f'N{suffix}.npy') / L**2
+                _M = np.load(_rdir+f'M{suffix}.npy') / L**2
+                N = np.mean(_N, axis=1)
+                M = np.mean(_M, axis=1)
+                _D = (Plotter.true_diversity(_N, _M)-1)
+                _R = _D * (_N+_M)
+                R = np.mean(_R, axis=1)
+                # Plot
+                axes[0].plot(
+                    sigma_arr, N, color=colors[i], marker=markers[j], mfc='white',
+                    markersize=3.5, linewidth=0.85, label=rf'$H={H:.2f}, \alpha={alpha:.2f}$'
+                )
+                axes[1].plot(
+                    sigma_arr, M, color=colors[i], marker=markers[j], mfc='white',
+                    markersize=3.5, linewidth=0.85, label=rf'$H={H:.2f}, \alpha={alpha:.2f}$'
+                )
+                axR.plot(
+                    sigma_arr, R, color=colors[i], marker=markers[j], mfc='white',
+                    markersize=3.5, linewidth=0.85, label=rf'$H={H:.2f}, \alpha={alpha:.2f}$'
+                )
+        
+        # Limits, labels, etc
+        for i, ax in enumerate(axes):
+            ax.set_xlabel(r'$\sigma$', fontsize=16)
+            if i == 0:
+                ax.legend(
+                    loc='upper right', fontsize=12, frameon=False, labelspacing=0.1,
+                    handletextpad=0.1, handlelength=1, borderaxespad=0
+                )
+            
+
+
     def plot_population_densities_H(self, args):
         """ Plot populations densites as a function of H 
             Note that some of the plots are a function of α for different values of H
@@ -732,11 +787,13 @@ class Plotter():
                     handletextpad=0.1, handlelength=1, borderaxespad=0
                 )
 
-    def plot_population_densities_sigma(self, args):
-        """ Plot population densities as a function of λ, but for different σ """
+    def plot_population_densities_fragile(self, args):
+        """ Plot population densities as a function of λ, but for different σ,
+            as to determine for what value of λ the system is (most) fragile 
+        """
         L = 2**args.m
         # Specify directory
-        _dir = args.rdir+'sllvm/sigma/'
+        _dir = args.rdir+'sllvm/lambda/'
         _rdir = _dir+'{L:d}x{L:d}/'.format(L=L)
         # Load variables
         # alpha_arr = np.loadtxt(_dir+'alpha.txt')[::3]
@@ -1131,7 +1188,7 @@ class Plotter():
             axes[1].semilogx(
                 patchbins, P,
                 color=colors[i], marker=markers[i], mfc='white', markersize=3.5,
-                linestyle='none', label=rf'$H={H:.2f}, \alpha={alpha:.2f}$'
+                linestyle='none', label=rf'$H={H:.2f},\; \alpha={alpha:.2f}$'
             )
         # Helper lines
         for i, ax in enumerate(axes):
@@ -1152,6 +1209,7 @@ class Plotter():
                     0.95, 0.05, r'$x=\rho L^2$', rotation=90, ha='center', va='bottom', 
                     fontsize=11, transform=ax.transAxes
                 )
+                ax.set_ylabel(r'$P_d$', fontsize=16)
             # Limits, labels, etc        
             ax.set_xlim(min(patchbins), 4)
             ax.set_xticks([10**i for i in range(-5,1,1)])
@@ -1160,7 +1218,6 @@ class Plotter():
             ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
             ax.set_ylim(0, 1.05)
             ax.set_xlabel(r'$x / \rho L^2$', fontsize=16)
-            ax.set_ylabel(r'$P_d$', fontsize=16)
             ax.legend(
                 loc='upper right', fontsize=11, labelspacing=0., handlelength=1,
                 borderaxespad=0., handletextpad=0.2, frameon=False
@@ -1186,6 +1243,7 @@ if __name__ == "__main__":
     # Pjotr.plot_patch_distribution(args)
 
     ## Population density related plots
+    # Pjotr.plot_population_densities_fragile(args)
     # Pjotr.plot_population_dynamics(args)
     # Pjotr.plot_population_densities(args)
     # Pjotr.plot_population_densities_alpha(args)
