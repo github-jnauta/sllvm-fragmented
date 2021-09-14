@@ -41,14 +41,14 @@ class Analyzer():
         # (adapt as necessary)
         if args.argument == 'lambda':
             self._suffix = (
-                '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}_mu{:.4f}'
-                '_Lambda{:.4f}_lambda{:s}_sig{:.4f}_a{:.3f}_seed{:s}'.format(
+                '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_mu{:.4f}'
+                '_Lambda{:.4f}_lambda{:s}_sigma{:.4f}_alpha{:.3f}_seed{:s}'.format(
                     args.T, args.N0, args.M0, args.H, args.rho, args.mu,
                     args.Lambda_, '{var:.4f}', args.sigma, args.alpha, '{seed:d}'
                 )
             )
             self._printstr = (
-                '{L}x{L} lattice, H={H:.3f}, \u03C1={rho:.3f}, T={T:d}, ' \
+                '{L}x{L} lattice, H={H:.4f}, \u03C1={rho:.3f}, T={T:d}, ' \
                 '\u039B={Lambda_:.4f}, \u03B1={alpha:.3f}, ' \
                 '\u03BC={mu:.4f}, \u03C3={sigma:.4f}'.format(
                     L=2**args.m, H=args.H, rho=args.rho, T=args.T,
@@ -56,10 +56,10 @@ class Analyzer():
                     mu=args.mu, sigma=args.sigma
                 )
             )
-            self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.3f}_rho{:.3f}' \
-                '_Lambda{:.4f}_alpha{:.3f}_mu{:.4f}_sigma{:.4f}'.format(
+            self.save_suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}' \
+                '_Lambda{:.4f}_mu{:.4f}_sigma{:.4f}_alpha{:.3f}'.format(
                 args.T, args.N0, args.M0, args.H,
-                args.rho, args.Lambda_, args.alpha, args.mu, args.sigma
+                args.rho, args.Lambda_, args.mu, args.sigma, args.alpha
             )
         elif args.argument == 'alpha':
             self._suffix = (
@@ -204,20 +204,19 @@ class Analyzer():
                     N[i,j] = np.mean(_N[-50:])
                     M[i,j] = np.mean(_M[-50:])
                     # Environmental metrics
-                    _nI = np.load(self._ddir+f'isolated_patches{suffix}.npy')
-                    n_isolated[i,j] = np.cumsum(_nI)[-1]
-                    _eta_habitat = np.load(self._ddir+f'habitat_efficiency{suffix}.npy')
-                    eta_habitat[i,j] = np.mean(_eta_habitat[-50:])
-                    _poh = np.load(self._ddir+f'predators_on_habitat{suffix}.npy')
-                    predators_on_habitat[i,j] = np.mean(_poh[-50:])
+                    #_nI = np.load(self._ddir+f'isolated_patches{suffix}.npy')
+                    #n_isolated[i,j] = np.cumsum(_nI)[-1]
+                    #_eta_habitat = np.load(self._ddir+f'habitat_efficiency{suffix}.npy')
+                    #eta_habitat[i,j] = np.mean(_eta_habitat[-50:])
+                    #_poh = np.load(self._ddir+f'predators_on_habitat{suffix}.npy')
+                    #predators_on_habitat[i,j] = np.mean(_poh[-50:])
                 except FileNotFoundError:
                     print(self._ddir)
                     print(suffix)
         # Save
         np.save(self._rdir+"N{suffix:s}".format(suffix=self.save_suffix), N)
         np.save(self._rdir+"M{suffix:s}".format(suffix=self.save_suffix), M)
-        np.save(self._rdir+f'num_isolated_patches{self.save_suffix}', n_isolated)
-        np.save(self._rdir+f'predators_on_habitat{self.save_suffix}', predators_on_habitat)
+        # np.save(self._rdir+f'num_isolated_patches{self.save_suffix}', n_isolated)
         # Print closing statements
         print("Computed quasistationary population densities for \n %s"%(self._printstr))
 
