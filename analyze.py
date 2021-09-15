@@ -84,7 +84,7 @@ class Analyzer():
                 args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
             )
         elif args.argument == 'H':
-            self._dir = args.ddir+'sllvm/{arg:s}/{L:d}x{L:d}/'.format(arg='alpha', L=L)
+            self._dir = args.ddir+'sllvm/{arg:s}/{L:d}x{L:d}/'.format(arg='H', L=L)
             self._var_arr = np.loadtxt(self._dir+'{name:s}.txt'.format(name=args.argument))
             self._suffix = (
                 '_T{:d}_N{:d}_M{:d}_H{:s}_rho{:.3f}_mu{:.4f}'
@@ -194,7 +194,7 @@ class Analyzer():
         eta_habitat = np.zeros((len(self._var_arr), len(seeds)))
         predators_on_habitat = np.zeros((len(self._var_arr), len(seeds)))
         for i, var in enumerate(self._var_arr):
-            self._ddir = self._dir+'H{H:.4f}/'.format(H=args.H)
+            self._ddir = self._dir+'H{H:.4f}/'.format(H=var)
             for j, seed in enumerate(seeds):
                 suffix = self._suffix.format(var=var, seed=seed)
                 try:
@@ -273,6 +273,71 @@ class Analyzer():
         np.save(self._rdir+f'prob_patch_depletion{self.save_suffix}', P)
         print(f'Computed habitat/environment loss for \n {self._printstr}')
 
+    def compute_optimal_parameters(self, args):
+        """ Compute the Levy parameter α* that optimizes
+            (i) predator populations, and
+            (ii) species richness 
+        """
+        # Get directories based on the argument
+        self._get_string_dependent_vars(args)
+        # Load variable arrays
+        alpha_arr = np.loadtxt(self._dir+'alpha.txt')
+        print(alpha_arr); exit()
+        H_arr = np.loadtxt(self._dir+'H.txt')
+        seeds = np.loadtxt(self._dir+'seeds.txt', dtype=int)
+        # Allocate
+        alphastar_N = np.zeros((len(H_arr), len(seeds)))
+        alphastar_R = np.zeros((len(H_arr), len(seeds)))
+        Hstar_N = np.zeros((len(alpha_arr), len(seeds)))
+        Hstar_M = np.zeros((len(alpha_arr), len(seeds)))
+        Hstar_R = np.zeros((len(alpha_arr), len(seeds)))
+        # Load data
+        N = np.zeros((len(H_arr), len(alpha_arr), len(seeds)))
+        M = np.zeros((len(H_arr), len(alpha_arr), len(seeds)))
+        for i, H in enumerate(H_arr):
+            for j, alpha in enumerate(alpha_arr):
+                for k, seed in enumerate(seeds):
+                    _dir = args.ddir+'sllvm/{:s}/{L:d}x{L:d}/H{H:.4f}/'.format(
+                        args.argument, L=2**args.m, H=H
+                    )
+                    suffix = (
+                        '_T{:d}_N{:d}_M{:d}_H{:.4f}'
+                        '_rho{:.3f}_mu{:.4f}_Lambda{:.4f}_lambda{:.4f}_sigma{:.4f}_alpha{:.3f}'
+                        '_seed{:d}'.format(
+                            args.T, args.N0, args.M0, H, args.rho,
+                            args.mu, args.Lambda_, args.lambda_, args.sigma, alpha, seed
+                        )
+                    )    
+                    _N = np.load(_dir+f'pred_population{suffix}.npy')
+                    _M = np.load(_dir+f'prey_population{suffix}.npy')
+                    N[i,j,k] = np.mean(_N[-50:])
+                    M[i,j,k] = np.mean(_M[-50:])
+        # Compute species richness
+        D = Analyzer.true_diversity(N, M)
+        R = (D-1)*(N+M)
+        # Compute α* and H*
+        for i in range(len(H_arr)):
+            alphastar_N[i,:] = alpha_arr[np.argmax(N[i,:,:], axis=0)]
+            alphastar_R[i,:] = alpha_arr[np.argmax(R[i,:,:], axis=0)]
+        for i in range(len(alpha_arr)):
+            Hstar_N[i,:] = H_arr[np.argmax(N[:,i,:], axis=0)]
+            Hstar_M[i,:] = H_arr[np.argmax(M[:,i,:], axis=0)]
+            Hstar_R[i,:] = H_arr[np.argmax(R[:,i,:], axis=0)]
+        # Save
+        save_suffix = (
+                '_T{:d}_N{:d}_M{:d}_rho{:.3f}_mu{:.4f}'
+                '_Lambda{:.4f}_lambda{:.4f}_sigma{:.4f}'.format(
+                args.T, args.N0, args.M0, args.rho, args.mu, 
+                args.Lambda_, args.lambda_, args.sigma
+            )
+        )
+        np.save(self._rdir+f'alphastar_N{save_suffix}', alphastar_N)
+        np.save(self._rdir+f'alphastar_R{save_suffix}', alphastar_R)
+        np.save(self._rdir+f'Hstar_N{save_suffix}', Hstar_N)
+        np.save(self._rdir+f'Hstar_M{save_suffix}', Hstar_M)
+        np.save(self._rdir+f'Hstar_R{save_suffix}', Hstar_R)
+        # Print closing statements
+        print("Computed optimal Levy parameter estimation for \n %s"%(self._printstr))
 
 if __name__ == "__main__":
     # Instantiate class objects
@@ -280,9 +345,10 @@ if __name__ == "__main__":
     args = Argus.args 
     Analyze = Analyzer() 
     # Analyze
-    Analyze.compute_population_densities(args)
+    # Analyze.compute_population_densities(args)
     # Analyze.compute_density_evolution(args)
     # Analyze.compute_environment_loss(args)
+    Analyze.compute_optimal_parameters(args)
     
 
     
