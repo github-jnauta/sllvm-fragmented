@@ -34,7 +34,7 @@ import src.args
 # Set markers & colors
 markers = ['s', 'o', 'D', '^', '>', '*', 'p', 'h', 'v', '<']
 colors = [
-    'firebrick', 'darkmagenta', 'darkgreen', 'navy', 'k', 'seagreen', 
+    'k', 'navy', 'firebrick', 'darkgreen', 'darkmagenta',# 'seagreen', 
     'darkorange', 'indigo', 'maroon', 'peru', 'orchid'
 ]
 figlabels = [
@@ -47,6 +47,22 @@ figbflabels = [
 ]
 linestyles = ['-', '--', ':', '-.']
 
+# set the colormap and centre the colorbar
+class MidpointNormalize(matplotlib.colors.Normalize):
+	"""
+	Normalise the colorbar so that diverging bars work there way either side from a prescribed midpoint value)
+
+	e.g. im=ax1.imshow(array, norm=MidpointNormalize(midpoint=0.,vmin=-100, vmax=100))
+	"""
+	def __init__(self, vmin=None, vmax=None, midpoint=None, clip=False):
+		self.midpoint = midpoint
+		colors.Normalize.__init__(self, vmin, vmax, clip)
+
+	def __call__(self, value, clip=None):
+		# I'm ignoring masked values and all kinds of edge cases to make a
+		# simple example...
+		x, y = [self.vmin, self.midpoint, self.vmax], [0, 0.5, 1]
+		return np.ma.masked_array(np.interp(value, x, y), np.isnan(value))
 
 class Plotter():
     def __init__(self):
@@ -364,6 +380,7 @@ class Plotter():
         xax = args.T / args.nmeasures * np.arange(args.nmeasures+1)
         # Initialize figure
         fig, axes = plt.subplots(3,2, figsize=(4.5,8/4*3), tight_layout=True)
+        figp, axesp = plt.subplots(1,3, figsize=(8,8/3), tight_layout=True)
         # Plot
         for i, alpha in enumerate(alpha_arr):
             for j, H in enumerate(H_arr):
@@ -383,6 +400,9 @@ class Plotter():
                 )
                 axes[i,1].plot(
                     xax, M, color=colors[j], linewidth=0.85
+                )
+                axesp[i].plot(
+                    N, M, color=colors[j], linewidth=0.85, label=Hlab
                 )
         # Limits, labels, etc
         ylabels = [r'$N(t)$', r'$M(t)$']
@@ -408,6 +428,20 @@ class Plotter():
                     va='center', rotation=90, transform=ax.transAxes
                 )
                 j += 1
+        for i, ax in enumerate(axesp):
+            ax.set_xlim(0, 1.05*args.rho)
+            ax.set_ylim(0, 1.05*args.rho)
+            ax.set_xlabel(r'$N$', fontsize=16)
+            ax.set_ylabel(r'$M$', fontsize=16)
+            ax.text(
+                0.5, 1.05, r'$\alpha=%.1f$'%(alpha_arr[i]), ha='center', fontsize=14,
+                transform=ax.transAxes
+            )
+            if i == 2:
+                ax.legend(
+                    loc='center left', fontsize=12, frameon=False, labelspacing=0.1, handlelength=1.,
+                    handletextpad=0.2, borderaxespad=0.2
+                )
         # Save
         self.figdict[f'population_dynamics_rho{args.rho:.2f}'] = fig 
 
@@ -502,11 +536,12 @@ class Plotter():
         # Load variables
         alpha_arr = np.loadtxt(_dir+'alpha.txt')
         idx_2 = np.argmax(alpha_arr==2.)
-        H_arr = np.loadtxt(_dir+'H.txt')
+        # H_arr = np.loadtxt(_dir+'H.txt')
+        H_arr = [0.01, 0.1, 0.2, 0.5, 1.0]
         fitax = np.linspace(min(alpha_arr), max(alpha_arr), 250)
         seeds = np.loadtxt(_dir+'seeds.txt')
         # Initialize figure
-        fig, axes = plt.subplots(2,1, figsize=(3.5,7/4*3), tight_layout=True)
+        fig, axes = plt.subplots(1,2, figsize=(7,3.5/4*3), tight_layout=True)
         # axin = axes[1].inset_axes([0.42,0.42,0.4*4/3,0.5])
         figR, axR = plt.subplots(1,1, figsize=(3.5,3.5/4*3), tight_layout=True)
         # Load data & plot 
@@ -522,25 +557,23 @@ class Plotter():
             N = np.mean(_N, axis=1) 
             Nstd = np.std(_N, axis=1)
             M = np.mean(_M, axis=1) 
+            # Change label
+            label = r'$H\rightarrow 1$' if H == 1 else r'$H=%.2f$'%(H)
             # Plot            
             axes[0].plot(
                 alpha_arr, N, color=colors[i], marker=markers[i], mfc='white',
-                markersize=3.25, linewidth=0.85, label=r'$H=%.2f$'%(H)
+                markersize=3.5, linewidth=0.85, label=label, zorder=len(H_arr)-i
             )
             axes[1].plot(
                 alpha_arr, M, color=colors[i], marker=markers[i], mfc='white',
-                markersize=3.25, linewidth=0.85, label=r'$H=%.2f$'%(H)
+                markersize=3.5, linewidth=0.85, label=label, zorder=len(H_arr)-i
             )
-            # axin.plot(
-            #     alpha_arr[:idx_2+1], M[:idx_2+1], color=colors[i], marker=markers[i],
-            #     mfc='white', markersize=3.25, linewidth=0.75, label=r'$H=%.2f$'%(H)
-            # )
             _D = (Plotter.true_diversity(_N, _M)-1)
             _R = _D * (_N+_M)
             R = np.mean(_R, axis=1)
             axR.plot(
                 alpha_arr, R, color=colors[i], marker=markers[i], mfc='white',
-                markersize=3.25, linewidth=0.85, label=r'$H=%.2f$'%(H)
+                markersize=3.5, linewidth=0.85, label=label, zorder=len(H_arr)-i
             )
         # Limits, labels, etc
         xlim = [1,2] if args.compute else [1,max(alpha_arr)]
@@ -553,13 +586,13 @@ class Plotter():
         _axes = [ax for ax in axes] + [axR]
         for i, ax in enumerate(_axes):          
             ax.set_xlim(xlim)
-            ax.set_xticks([1+0.5*i for i in range(7)])
+            # ax.set_xticks([1+0.5*i for i in range(7)])
             ax.set_ylim(0, ylims[i])
             ax.set_xlabel(r'$\alpha$', fontsize=16)
             ax.set_ylabel(ylabels[i], fontsize=16)
             if i < 2:
                 ax.text(
-                    0.0, 1.065, figlabels[i], ha='center', fontsize=14,
+                    0.0, 1.065, figlabels[i], ha='left', fontsize=14,
                     transform=ax.transAxes
                 )
             if i%2==0:
@@ -574,7 +607,7 @@ class Plotter():
                 
          
         # Save
-        self.figdict[f'population_density_alpha_rho{args.rho}'] = fig 
+        self.figdict[f'population_densities_alpha_rho{args.rho}'] = fig 
         self.figdict[f'richness_alpha_rho{args.rho}'] = figR
 
     def plot_population_densities_lambda(self, args):
@@ -741,8 +774,9 @@ class Plotter():
         _rdir = args.rdir+'sllvm/H/{L:d}x{L:d}/'.format(L=L)
         # Load variables
         # alpha_arr = np.loadtxt(_dir+'alpha.txt')
-        alpha_arr = [1.1, 1.5, 2.0, 2.5, 3.0]
-        H_arr = np.loadtxt(_dir+'H.txt')
+        alpha_arr = [1.5, 1.8, 2.0, 2.3, 2.5]
+        # H_arr = np.loadtxt(_dir+'H.txt')
+        H_arr = [0.05*i for i in range(21)]
         # Initialize figure
         fig, axes = plt.subplots(1,2, figsize=(2*3.5,3.5/4*3), tight_layout=True)
         figR, axR = plt.subplots(1,1, figsize=(3.5,3.5/4*3), tight_layout=True)
@@ -775,17 +809,26 @@ class Plotter():
             )
         # Limits, labels, etc
         ylabels = [r'$N$', r'$M$', r'$\mathcal{R}$']
+        ymax = [0.08, 0.1, 0.2]
         axes = list(axes) + [axR]
         for i, ax in enumerate(axes):
             ax.set_xlim(0, 1)
-            ax.set_ylim(bottom=0)
+            ax.set_ylim(0, ymax[i])
             ax.set_xlabel(r'$H$', fontsize=16)
             ax.set_ylabel(ylabels[i], fontsize=16)
             if i > 0:
                 ax.legend(
-                    loc='upper right', fontsize=12, frameon=False, labelspacing=0.1,
-                    handletextpad=0.1, handlelength=1, borderaxespad=0
+                    loc='upper right', fontsize=11, frameon=False, labelspacing=0.,
+                    handletextpad=0.2, handlelength=0.9, borderaxespad=-0.1
                 )
+            if i < 2:
+                ax.text(
+                    0.0, 1.065, figlabels[i], ha='left', fontsize=14,
+                    transform=ax.transAxes
+                )
+        # Save
+        self.figdict[f'population_densities_H_rho{args.rho:.1f}'] = fig
+        self.figdict[f'richness_H_rho{args.rho:.1f}'] = figR
 
     def plot_population_densities_fragile(self, args):
         """ Plot population densities as a function of λ, but for different σ,
@@ -797,9 +840,9 @@ class Plotter():
         _rdir = _dir+'{L:d}x{L:d}/'.format(L=L)
         # Load variables
         # alpha_arr = np.loadtxt(_dir+'alpha.txt')[::3]
-        alpha_arr = [1.1, -1]
+        alpha_arr = [1.01, -1]
         # print(alpha_arr)
-        sigma_arr = np.loadtxt(_dir+'sigma.txt')[1:]
+        sigma_arr = np.loadtxt(_dir+'sigma.txt')
         lambda_arr = np.loadtxt(_dir+'lambda.txt')
         lambda_star = np.zeros(len(sigma_arr))
         # Initialize figure        
@@ -862,7 +905,7 @@ class Plotter():
         _, connectors = axes[0].indicate_inset_zoom(axin, ec='k', alpha=0.5)
         axin.tick_params(axis='both', labelsize=8)
         axin.set_xlim(min(lambda_arr), 0.1)
-        axin.set_ylim(0,0.03)
+        axin.set_ylim(0,0.1)
         # Legend        
         sigma_lines = [
             Line2D(
@@ -870,15 +913,15 @@ class Plotter():
                 mfc='white', markersize=4
             ) for i in range(len(sigma_arr))
         ]
-        sigma_labels = [rf'$\sigma={x:.2f}$' for x in sigma_arr]
+        sigma_labels = [rf'$\sigma\!=\!{x:.2f}$' for x in sigma_arr]
         alpha_lines = [
             Line2D(
                 [],[], color='k', linestyle=linestyles[i], linewidth=0.85
             ) for i in range(len(alpha_arr))
         ]
-        alpha_labels = [r'$\alpha\rightarrow 1$', r'$\alpha\rightarrow \infty$']
+        alpha_labels = [r'$\alpha\!\rightarrow\!1$', r'$\alpha\!\rightarrow\! \infty$']
         # Axes
-        ylims = [1.15*args.rho, 1.05*args.rho]
+        ylims = [1.75*args.rho, 1.1*args.rho]
         ylabels = [r'$N$', r'$M$']
         for i, ax in enumerate(axes):
             # Plot helper line at λ=λ*
@@ -898,13 +941,13 @@ class Plotter():
             if i == 1:
                 sigma_legend = plt.legend(
                     sigma_lines, sigma_labels, 
-                    loc='lower left', fontsize=11, frameon=False, borderaxespad=0.,
-                    labelspacing=0.2, handlelength=0.5, handletextpad=0.4
+                    loc='lower left', fontsize=11, frameon=False, borderaxespad=-0.1,
+                    labelspacing=0, handlelength=0.5, handletextpad=0.2
                 )
                 alpha_legend = plt.legend(
                     alpha_lines, alpha_labels, 
-                    loc='upper right', fontsize=11, frameon=False, borderaxespad=0.,
-                    labelspacing=0.2, handlelength=0.85, handletextpad=0.4
+                    loc='upper right', fontsize=11, frameon=False, borderaxespad=-0.1,
+                    labelspacing=0.1, handlelength=0.85, handletextpad=0.2
                 )
                 plt.gca().add_artist(sigma_legend)
                 plt.gca().add_artist(alpha_legend)
@@ -912,24 +955,25 @@ class Plotter():
         # Save
         self.figdict[f'population_densities_sigma_H{args.H:.4f}_rho{args.rho:.2f}'] = fig 
     
-    def plot_optimal_alpha(self, args):
-        """ Plot optimal Levy parameter α* """
+    def plot_optimal_values(self, args):
+        """ Plot optimal values such as 
+            - the Levy parameter α* as a function of H 
+            - H* as a function of α   
+        """
         L = 2**args.m
         # Specify directory        
-        _dir = args.rdir+'sllvm/alpha_opt/'
-        _rdir = args.rdir+'sllvm/alpha_opt/{L:d}x{L:d}/'.format(L=L)
-        if args.compute:
-            _rdir = _rdir+'fit/'
-            _dir = _rdir
+        _dir = args.rdir+'sllvm/optvalues/'
+        _rdir = args.rdir+'sllvm/optvalues/{L:d}x{L:d}/'.format(L=L)
         # Load variable arrays
+        alpha_arr = np.loadtxt(_dir+'alpha.txt')
         H_arr = np.loadtxt(_dir+'H.txt')
         # Initialize figure
-        fig, ax = plt.subplots(1,1, figsize=(3.5,3.5/4*3), tight_layout=True)
+        fig, axes = plt.subplots(1,2, figsize=(7,3.5/4*3), tight_layout=True)
         # Load data
-        suffix = '_T{:d}_N{:d}_M{:d}_rho{:.3f}_' \
-            'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
+        suffix = '_T{:d}_N{:d}_M{:d}_rho{:.3f}_mu{:.4f}_' \
+            'Lambda{:.4f}_lambda{:.4f}_sigma{:.4f}'.format(
             args.T, args.N0, args.M0,
-            args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
+            args.rho, args.mu, args.Lambda_, args.lambda_, args.sigma
         )
         _alphastar_N = np.load(_rdir+f'alphastar_N{suffix}.npy')
         _alphastar_R = np.load(_rdir+f'alphastar_R{suffix}.npy')
@@ -937,53 +981,96 @@ class Plotter():
         alphastar_R = np.mean(_alphastar_R, axis=1)
         alphastar_Nstd = np.std(_alphastar_N, axis=1)
         alphastar_Rstd = np.std(_alphastar_R, axis=1)
+        _Hstar_N = np.load(_rdir+f'Hstar_N{suffix}.npy')
+        _Hstar_M = np.load(_rdir+f'Hstar_M{suffix}.npy')
+        _Hstar_R = np.load(_rdir+f'Hstar_R{suffix}.npy')
+        Hstar_N = np.mean(_Hstar_N, axis=1)
+        Hstar_M = np.mean(_Hstar_M, axis=1)
+        Hstar_R = np.mean(_Hstar_R, axis=1)
+        Hstar_Nstd = np.std(_Hstar_N, axis=1)
+        Hstar_Mstd = np.std(_Hstar_M, axis=1)
+        Hstar_Rstd = np.std(_Hstar_R, axis=1)
+        # Print α* for some H
+        H = [0.01, 0.2, 0.5, 1]
+        Hidxs = [np.flatnonzero(H_arr==h) for h in H]
+        for i, idx in enumerate(Hidxs):
+            print(H[i], alphastar_R[idx])
         # Plot data
-        ax.errorbar(
+        axes[0].errorbar(
             H_arr, alphastar_N, yerr=alphastar_Nstd, capsize=1.5,
             color='k', marker='o', mfc='white', markersize=3.5,
             linewidth=0.85, label=r'$\alpha^*_N$'
         )
-        ax.errorbar(
+        axes[0].errorbar(
             H_arr, alphastar_R, yerr=alphastar_Rstd, capsize=1.5,
             color='navy', marker='D', mfc='white', markersize=3.5,
             linestyle='--', linewidth=0.85, label=r'$\alpha^*_\mathcal{R}$'
         )
-        H_plot = [0.01, 0.2, 0.5, 1.]
-        for __H in H_plot:
-            print(__H, alphastar_R[np.argwhere(H_arr==__H)])
+        axes[1].errorbar(
+            alpha_arr, Hstar_N, yerr=Hstar_Nstd, capsize=1.5,
+            color='k', marker='D', mfc='white', markersize=3.5,
+            linestyle='-', linewidth=0.85, label=r'$H^*_N$'
+        )
+        axes[1].errorbar(
+            alpha_arr, Hstar_M, yerr=Hstar_Mstd, capsize=1.5,
+            color='navy', marker='D', mfc='white', markersize=3.5,
+            linestyle=':', linewidth=0.85, label=r'$H^*_M$'
+        )
+        axes[1].errorbar(
+            alpha_arr, Hstar_R, yerr=Hstar_Rstd, capsize=1.5,
+            color='firebrick', marker='D', mfc='white', markersize=3.5,
+            linestyle='--', linewidth=0.85, label=r'$H^*_\mathcal{R}$'
+        )
+        # H_plot = [0.01, 0.2, 0.5, 1.]
+        # for __H in H_plot:
+        #     print(__H, alphastar_R[np.argwhere(H_arr==__H)])
         # Plot helpers
-        _latticedir = args.ddir+'landscapes/'
-        suffix = '_{L:d}x{L:d}_H{H:.3f}_rho{rho:.3f}'.format(L=L, H=0.99, rho=args.rho)
-        lattice_lo = np.load(_latticedir+"lattice{suffix:s}.npy".format(suffix=suffix))
-        suffix = '_{L:d}x{L:d}_H{H:.3f}_rho{rho:.3f}'.format(L=L, H=0.01, rho=args.rho)
-        lattice_hi = np.load(_latticedir+"lattice{suffix:s}.npy".format(suffix=suffix))
-        axin_hi = ax.inset_axes([-0.0325,0.01,0.3,0.3])
-        axin_hi.imshow(lattice_hi, cmap='Greys')
-        axin_lo = ax.inset_axes([0.735,0.68,0.3,0.3])
-        axin_lo.imshow(lattice_lo, cmap='Greys')
-        axin_hi.text(
-            1.2,0.5, r'$H\rightarrow 0$', fontsize=9, rotation=90, 
-            ha='center', va='center', transform=axin_hi.transAxes
-        )
-        axin_lo.text(
-            -0.2,0.5, r'$H\rightarrow 1$', fontsize=9, rotation=90, 
-            ha='center', va='center', transform=axin_lo.transAxes
-        )
-        for axin in [axin_hi, axin_lo]:
-            axin.xaxis.set_visible(False)
-            axin.yaxis.set_visible(False)
+        # _latticedir = args.ddir+'landscapes/'
+        # suffix = '_{L:d}x{L:d}_H{H:.3f}_rho{rho:.3f}'.format(L=L, H=0.99, rho=args.rho)
+        # lattice_lo = np.load(_latticedir+"lattice{suffix:s}.npy".format(suffix=suffix))
+        # suffix = '_{L:d}x{L:d}_H{H:.3f}_rho{rho:.3f}'.format(L=L, H=0.01, rho=args.rho)
+        # lattice_hi = np.load(_latticedir+"lattice{suffix:s}.npy".format(suffix=suffix))
+        # axin_hi = axes[0].inset_axes([-0.0325,0.68,0.3,0.3])
+        # axin_hi.imshow(lattice_hi, cmap='Greys')
+        # axin_lo = axes[0].inset_axes([0.735,0.68,0.3,0.3])
+        # axin_lo.imshow(lattice_lo, cmap='Greys')
+        # axin_hi.text(
+        #     1.2,0.5, r'$H\rightarrow 0$', fontsize=9, rotation=90, 
+        #     ha='center', va='center', transform=axin_hi.transAxes
+        # )
+        # axin_lo.text(
+        #     -0.2,0.5, r'$H\rightarrow 1$', fontsize=9, rotation=90, 
+        #     ha='center', va='center', transform=axin_lo.transAxes
+        # )
+        # for axin in [axin_hi, axin_lo]:
+        #     axin.xaxis.set_visible(False)
+        #     axin.yaxis.set_visible(False)
         # Limits, labels, etc
-        ax.set_xlim(0,1)
-        ax.set_ylim(1,2)
-        ax.set_xlabel(r'$H$', fontsize=16)
-        ax.set_ylabel(r'$\alpha^*$', fontsize=16)
-        legend = ax.legend(
-            loc='upper center', fontsize=12, handlelength=1.5, handletextpad=0.4,
-            borderaxespad=0.1, labelspacing=0.5, frameon=False
-        )
-        plt.setp(legend.get_texts(), ha='left', va='center')
+        xlims = [[0,1], [1,3]]
+        ylims = [[1,2], [0,1.05]]
+        for i, ax in enumerate(axes):
+            ax.set_xlim(xlims[i])
+            ax.set_ylim(ylims[i])
+            if i == 0:
+                ax.set_xlabel(r'$H$', fontsize=16)
+                ax.set_ylabel(r'$\alpha^*$', fontsize=16)
+                legend = ax.legend(
+                    loc='upper right', fontsize=12, handlelength=1.5, handletextpad=0.4,
+                    borderaxespad=0.1, labelspacing=0.5, frameon=False
+                )
+            else:
+                ax.set_xlabel(r'$\alpha$', fontsize=16)
+                ax.set_ylabel(r'$H^*$', fontsize=16)
+                legend = ax.legend(
+                    loc='lower right', fontsize=12, handlelength=1.5, handletextpad=0.4,
+                    borderaxespad=0., labelspacing=0.5, frameon=False
+                )
+            plt.setp(legend.get_texts(), ha='left', va='center')
+            ax.text(
+                0.0, 1.065, figlabels[i], ha='center', fontsize=14, transform=ax.transAxes
+            )
         # Save
-        self.figdict[f'alphastar_rho{args.rho}'] = fig
+        self.figdict[f'optimalvalues_rho{args.rho}'] = fig
 
     ###########################
     # Levy walk related plots #
@@ -1063,26 +1150,25 @@ class Plotter():
     
     #######################################
     # Environmental metrics related plots #
-    def plot_environmental_metrics_alpha(self, args):
-        """ Plot measures environmental metrics vs Levy parameter α """
+    def plot_environmental_metrics(self, args):
+        """ Plot measured environmental metrics"""
         L = 2**args.m
         # Specify directory        
-        _dir = args.rdir+'sllvm/alpha/'
-        _rdir = args.rdir+'sllvm/alpha/{L:d}x{L:d}/'.format(L=L)
+        _dir = args.rdir+'sllvm/habitat_loss/'
+        _rdir = args.rdir+'sllvm/habitat_loss/{L:d}x{L:d}/'.format(L=L)
         if args.compute:
             _rdir = _rdir+'fit/'
             _dir = _rdir
         
         # Load variables
         alpha_arr = np.loadtxt(_dir+'alpha.txt')
-        H_arr = np.loadtxt(_dir+'H.txt')
+        H_arr = [0.01, 0.2, 0.5, 1]
         fitax = np.linspace(1, max(alpha_arr), 250)
-        seeds = np.loadtxt(_dir+'seeds.txt')
         # Initialize figure
-        fig, ax = plt.subplots(1,1, figsize=(3.5,3.5/4*3), tight_layout=True)
-        # Load data & plot 
+        fig, axes = plt.subplots(1,2, figsize=(7,3.5/4*3), tight_layout=True)
+        # Load data & plot as a function of alpha
         for i, H in enumerate(H_arr):
-            Hlab = rf'{H:.4f}' if i == len(H_arr)-1 else rf'{H:.2f}'
+            label = r'$H\rightarrow 1$' if H==1 else rf'$H={H:.2f}$'
             # Load data
             suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_' \
                 'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
@@ -1092,44 +1178,164 @@ class Plotter():
             # Load
             _nI = np.load(_rdir+f'num_isolated_patches{suffix}.npy')
             rho_eff = 1 - np.mean(_nI, axis=1) / (args.rho*L**2)
-            _N = np.load(_rdir+f'N{suffix}.npy')
-            # _poh = np.load(_rdir+f'predators_on_habitat{suffix}.npy')
-            # _poh = np.ma.divide(_poh, _N).filled(0)
-            # poh = np.nanmean(_poh, axis=1)
             # Plot
             popt, _ = curve_fit(Plotter.sigmoid, alpha_arr, rho_eff)
             fit = np.minimum(1, Plotter.sigmoid(fitax, *popt))
-            ax.plot(fitax, fit, color=colors[i], linewidth=0.85)
-            ax.plot(
+            axes[0].plot(fitax, fit, color=colors[i], linewidth=0.85)
+            axes[0].plot(
                 [],[], color=colors[i], marker=markers[i], mfc='white',
-                markersize=3.5, linewidth=0.85, label=rf'$H={Hlab:s}$'
+                markersize=3.5, linewidth=0.85, label=label
             )
-            ax.plot(
+            axes[0].plot(
                 alpha_arr, rho_eff, color=colors[i], marker=markers[i], mfc='white',
                 markersize=3.5, linestyle='none'
             )
-            # axes[1].plot(
-            #     alpha_arr, poh, color=colors[i], marker=markers[i], mfc='white',
-            #     markersize=3.5, linewidth=0.85, label=rf'$H={Hlab:s}$'
-            # )
+        # Load data & plot as a function of H
+        alpha_arr = [1.1, 1.5, 2.0, 2.5, 3.0]
+        H_arr = np.loadtxt(_dir+'H.txt')
+        fitax = np.linspace(0, max(H_arr), 250)
+        for i, alpha in enumerate(alpha_arr):
+            label = r'$\alpha={:.1f}$'.format(alpha)
+            # Load data
+            suffix = '_T{:d}_N{:d}_M{:d}_rho{:.3f}_' \
+                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}_alpha{:.3f}'.format(
+                args.T, args.N0, args.M0, args.rho, 
+                args.Lambda_, args.lambda_, args.mu, args.sigma, alpha
+            )
+            # Load
+            _nI = np.load(_rdir+f'num_isolated_patches{suffix}.npy')
+            rho_eff = 1 - np.mean(_nI, axis=1) / (args.rho*L**2)
+            # Plot
+            popt, _ = curve_fit(Plotter.sigmoid, H_arr, rho_eff)
+            fit = np.minimum(1, Plotter.sigmoid(fitax, *popt))
+            axes[1].plot(fitax, fit, color=colors[i], linewidth=0.85)
+            axes[1].plot(
+                [],[], color=colors[i], marker=markers[i], mfc='white',
+                markersize=3.5, linewidth=0.85, label=label
+            )
+            axes[1].plot(
+                H_arr, rho_eff, color=colors[i], marker=markers[i], mfc='white',
+                markersize=3.5, linestyle='none'
+            )
         # Helper lines
         # ax.plot([1,1], [0.4,1.05], color='k', linewidth=0.85)
         # ax.plot([1,1], [0.,0.035], color='k', linewidth=0.85)
+        xlims = [[1,max(alpha_arr)], [0, 1]]
+        xlabels = [r'$\alpha$', r'$H$']
         # Limits, labels, etc
-        # for i, ax in enumerate(axes):
-        ax.set_xlim(1, max(alpha_arr))
-        ax.set_xticks([1+0.5*i for i in range(7)])
-        ax.set_ylim(0, 1.01)
-        ax.set_yticks([0+0.2*i for i in range(6)])
-        ax.set_xlabel(r'$\alpha$', fontsize=16)
-        ax.set_ylabel(r'$\rho_{eff}$', fontsize=16)
-        ax.legend(
-            loc='lower left', fontsize=11, labelspacing=0., handlelength=1, 
-            borderaxespad=-0.2, handletextpad=0.1, frameon=False
-        )
+        for i, ax in enumerate(axes):
+            ax.set_xlim(xlims[i])
+            # ax.set_xticks([1+0.5*i for i in range(7)])
+            ax.set_ylim(0, 1.01)
+            ax.set_yticks([0+0.2*i for i in range(6)])
+            ax.set_xlabel(xlabels[i], fontsize=16)
+            ax.set_ylabel(r'$\rho_{eff}$', fontsize=16)
+            loc = 'lower left' if i == 0 else 'lower right'
+            ax.legend(
+                loc=loc, fontsize=11, labelspacing=0., handlelength=1, 
+                borderaxespad=-0.2, handletextpad=0.1, frameon=False
+            )
+            ax.text(
+                0.0, 1.065, figlabels[i], ha='center', fontsize=14, transform=ax.transAxes
+            )
         # Save
         self.figdict[f'rho_effective_rho{args.rho:.2f}'] = fig
     
+    def plot_heatmap(self, args):
+        """ Plot a heatmap of population densities and species richness for 
+            different α and H, as to gain insight into complex interactions 
+        """
+        L = 2**args.m 
+        # Specify directory
+        _dir = args.rdir+'sllvm/heatmap/'
+        _rdir = args.rdir+'sllvm/heatmap/{L:d}x{L:d}/'.format(L=L)
+        # Load or specify variable arrays
+        alpha_arr = np.loadtxt(_dir+'alpha.txt')
+        H_arr = np.loadtxt(_dir+'H.txt')
+        # Initialize figure
+        fig, axes = plt.subplots(1, 3, figsize=(9,3), tight_layout=True)
+        # Get colormap
+        cmap = plt.cm.get_cmap('YlGn')
+        # cmap = plt.cm.get_cmap('RdYlGn')
+        # _colors = ['gold', 'navy', 'lightgreen']
+        # cvals = np.linspace(0, 1, len(_colors))
+        # cvals = [0, 0.05, 0.1, 0.2, 0.5, 1.]
+        # colors = ['k', 'darkmagenta', 'yellow', 'green', 'navy', 'aqua']
+        # cvals = [0, 0.1, 0.2, 0.4, 0.7, 1]
+        # colors = ['red', 'yellow', 'green', 'lightseagreen', 'navy', 'lightskyblue']
+        # cvals[0] = 0
+        # norm = plt.Normalize(min(cvals), max(cvals))
+        # tuples = list(zip(map(norm,cvals), _colors))
+        # cmap = matplotlib.colors.LinearSegmentedColormap.from_list('', tuples)
+        
+        # Load & plot 
+        suffix = (
+                '_T{:d}_N{:d}_M{:d}_rho{:.3f}_mu{:.4f}'
+                '_Lambda{:.4f}_lambda{:.4f}_sigma{:.4f}'.format(
+                args.T, args.N0, args.M0, args.rho, args.mu,
+                args.Lambda_, args.lambda_, args.sigma
+            )
+        )
+        _N = np.load(_rdir+f'N_heatmap{suffix}.npy')
+        _M = np.load(_rdir+f'M_heatmap{suffix}.npy')
+        _R = np.load(_rdir+f'R_heatmap{suffix}.npy')
+        N = np.nanmean(_N, axis=2) / L**2 
+        M = np.nanmean(_M, axis=2) / L**2 
+        R = np.nanmean(_R, axis=2) / L**2 
+        N /= np.max(N) 
+        M /= np.max(M) 
+        R /= np.max(R)
+        # Plot
+        imN = axes[0].imshow(
+            N, aspect='auto', cmap=cmap, origin='lower', vmin=0, vmax=1,
+            extent=(min(alpha_arr), max(alpha_arr), min(H_arr), max(H_arr)),
+            interpolation='spline16', alpha=0.75
+        )
+        imM = axes[1].imshow(
+            M, aspect='auto', cmap=cmap, origin='lower', vmin=0, vmax=1,
+            extent=(min(alpha_arr), max(alpha_arr), min(H_arr), max(H_arr)),
+            interpolation='spline16', alpha=0.75
+        )
+        imR = axes[2].imshow(
+            R, aspect='auto', cmap=cmap, origin='lower', vmin=0, vmax=1,
+            extent=(min(alpha_arr), max(alpha_arr), min(H_arr), max(H_arr)),
+            interpolation='spline16', alpha=0.75
+        )
+        # Get maximum
+        for i, Z in enumerate([N, M, R]):
+            idx = np.where(Z==np.max(Z))
+            _H = H_arr[idx[0]]
+            _alpha = alpha_arr[idx[1]]
+            axes[i].plot(_alpha, _H, marker='o', linestyle='none', color='red', markersize=2.5)
+            axes[i].annotate(
+                r'', (_alpha+0.01,_H-0.01), xytext=(_alpha+0.15, _H-0.1), 
+                arrowprops=dict(arrowstyle='->', color='r')
+            )
+        # Limits, labels, etc
+        ims = [imN, imM, imR]
+        cmax = [0.2, 0.2, 0.2]
+        labels = [r'$N/N_{max}$', r'${M}$', r'${\mathcal{R}}$']
+        for i, ax in enumerate(axes):
+            ax.set_xlabel(r'$\alpha$', fontsize=16)
+            if i == 0:
+                ax.set_ylabel(r'$H$', fontsize=16)
+            ax.text(
+                0.5, 1.035, labels[i], fontsize=16, ha='center', transform=ax.transAxes
+            )
+            ax.set_xticks([1.0,1.5,2.0,2.5,3.0])
+            ax.set_yticks([0.01,0.2,0.4,0.6,0.8,1.0])
+            ax.set_yticklabels([0.0,0.2,0.4,0.6,0.8,1.0])
+            # Colorbar 
+            if i == len(axes)-1:
+                cbar = fig.colorbar(ims[i], ax=ax, fraction=0.04, pad=0.04)
+            # cbar.set_clim(0, cmax[i])
+            # cbar.set_ticks(np.linspace(0,cmax[i],5))
+            # cbar.set_ticklabels([r'%.2f'%(k) for k in np.linspace(0,cmax[i],5)])
+        # Save
+        self.figdict['alpha_H_heatmap'] = fig 
+
+
+
     def plot_habitat_loss_probability(self, args):
         """ Plot the habitat loss as the probability of a patch to be (indefinetly) 
             depleted as a function of patch size, for different Levy parameters
@@ -1139,7 +1345,7 @@ class Plotter():
         _dir = args.rdir+'sllvm/habitat_loss/'
         _rdir = args.rdir+'sllvm/habitat_loss/{L:d}x{L:d}/'.format(L=L)
         # Specify variables
-        alpha_arr = [1.1, 1.5, 2.0, 2.5, 3.0]
+        alpha_arr = [1.1, 1.5, 2.0, 2.5]
         patchbins = np.logspace(0, np.log10(args.rho*L**2+1), num=args.nbins, dtype=np.int64)
         patchbins = np.unique(patchbins)
         patchbins = patchbins / (args.rho*L**2)
@@ -1168,8 +1374,9 @@ class Plotter():
                 linestyle='none', label=rf'$\alpha={alpha:.1f}$'
             )
         # Load & plot for different H 
-        H_arr = np.loadtxt(_dir+'H.txt')
-        alpha_arr = np.loadtxt(_dir+'alpha.txt')
+        # H_arr = np.loadtxt(_dir+'H.txt')
+        H_arr = [0.01, 0.2, 0.5, 1]
+        alpha_arr = [1.472, 1.316, 1.195, 1.117]
         for i, (H, alpha) in enumerate(zip(H_arr,alpha_arr)):
             # Load
             suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_' \
@@ -1209,7 +1416,7 @@ class Plotter():
                     0.95, 0.05, r'$x=\rho L^2$', rotation=90, ha='center', va='bottom', 
                     fontsize=11, transform=ax.transAxes
                 )
-                ax.set_ylabel(r'$P_d$', fontsize=16)
+            ax.set_ylabel(r'$P_d$', fontsize=16)
             # Limits, labels, etc        
             ax.set_xlim(min(patchbins), 4)
             ax.set_xticks([10**i for i in range(-5,1,1)])
@@ -1221,14 +1428,13 @@ class Plotter():
             ax.legend(
                 loc='upper right', fontsize=11, labelspacing=0., handlelength=1,
                 borderaxespad=0., handletextpad=0.2, frameon=False
-        )
+            )
+            ax.text(
+                0.0, 1.065, figlabels[i], ha='center', fontsize=14, transform=ax.transAxes
+            )
         # Save 
         self.figdict[f'habitat_loss_H{args.H:.4f}_rho{args.rho:.2f}'] = fig 
 
-
-            
-        
-    
 
 if __name__ == "__main__":
     Argus = src.args.Args() 
@@ -1251,14 +1457,15 @@ if __name__ == "__main__":
     # Pjotr.plot_population_densities_sigma(args)
     # Pjotr.plot_population_densities_H(args)
     # Pjotr.plot_population_phase_space(args)
-    # Pjotr.plot_optimal_alpha(args)
+    # Pjotr.plot_optimal_values(args)
 
     ## Flight length related plots
     # Pjotr.plot_flight_distribution_Lambda(args)
 
     ## Environmental related plots
-    # Pjotr.plot_environmental_metrics_alpha(args)
-    Pjotr.plot_habitat_loss_probability(args)
+    # Pjotr.plot_environmental_metrics(args)
+    # Pjotr.plot_habitat_loss_probability(args)
+    Pjotr.plot_heatmap(args)
     
     if not args.save:
         plt.show()
