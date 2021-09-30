@@ -97,27 +97,27 @@ class Plotter():
     def plot_fragmented_lattice(self, args):
         _dir = args.ddir+"landscapes/"
         # Load lattice(s)
-        _H = [0.01, 0.1, 0.5, 0.99]
+        _H = [0.01, 0.2, 0.5, 0.99]
         _rho = [0.1, 0.2, 0.3, 0.4]
         L = 2**args.m
         # Initialize figure
-        fig, axes = plt.subplots(1, len(_H), figsize=(2.5*len(_H), 2.5), tight_layout=True)
+        fig, axes = plt.subplots(2, 2, figsize=(3.5,3.5), tight_layout=True)
         # fig, axes = plt.subplots(1, len(_rho), figsize=(2.5*len(_rho), 2.5), tight_layout=True)
         for i, H in enumerate(_H):
         # for i, rho in enumerate(_rho):
             suffix = "_{L:d}x{L:d}_H{H:.3f}_rho{rho:.3f}".format(L=L, H=H, rho=args.rho)
             lattice = np.load(_dir+"lattice{suffix:s}.npy".format(suffix=suffix))
-            axes[i].imshow(lattice, cmap='Greys')
+            axes[i%2,i//2].imshow(lattice, cmap='Greys', interpolation='none')
         # Limits, labels, etc
-        for i, ax in enumerate(axes):
+        for i, ax in enumerate(axes.flatten('F')):
             ax.set_xticks([0, L])
             ax.set_yticks([0, L])
-            ax.set_xticklabels([r"0", r"L"], fontsize=14)
-            ax.set_yticklabels([r"0", r"L"], fontsize=14)
+            ax.set_xticklabels([r"0", r"L"], fontsize=9)
+            ax.set_yticklabels([r"0", r"L"], fontsize=9)
             ax.xaxis.tick_top()
             ax.text(
-                0.05, 0.95, r"H={:.2f}".format(_H[i]), transform=ax.transAxes, 
-                ha='left', va='top', fontsize=14, 
+                0.05, 0.925, r"H={:.2f}".format(_H[i]), transform=ax.transAxes, 
+                ha='left', va='top', fontsize=11, 
                 bbox=dict(boxstyle="round", ec='none', fc='white')
             )
         # Store
@@ -375,7 +375,7 @@ class Plotter():
         _rdir = args.rdir+'sllvm/evolution/{L:d}x{L:d}/'.format(L=L)
         # Load variables
         # alpha_arr = np.loadtxt(_dir+'alpha.txt')
-        alpha_arr = [1.1, 2.0, 3.0]
+        alpha_arr = [1.5, 2.0, 2.5]
         H_arr = np.loadtxt(_dir+'H.txt')
         xax = args.T / args.nmeasures * np.arange(args.nmeasures+1)
         # Initialize figure
@@ -406,7 +406,7 @@ class Plotter():
                 )
         # Limits, labels, etc
         ylabels = [r'$N(t)$', r'$M(t)$']
-        alphalabels = [r'$\alpha=1.1$', r'$\alpha=2.0$', r'$\alpha=3.0$']
+        # alphalabels = [rf'$\alpha={:.1f}$', r'$\alpha=2.0$', r'$\alpha=3.0$']
         j = 0
         for i, ax in enumerate(axes.flatten()):
             ax.set_xlim(0, args.T)
@@ -424,7 +424,7 @@ class Plotter():
             )
             if i % 2:
                 ax.text(
-                    1.1, 0.5, alphalabels[j], fontsize=14, ha='center', 
+                    1.1, 0.5, rf'$\alpha={alpha_arr[i//2]:.1f}$', fontsize=14, ha='center', 
                     va='center', rotation=90, transform=ax.transAxes
                 )
                 j += 1
@@ -554,8 +554,7 @@ class Plotter():
             )
             _N = np.load(_rdir+'N{:s}.npy'.format(suffix)) / L**2
             _M = np.load(_rdir+'M{:s}.npy'.format(suffix)) / L**2
-            N = np.mean(_N, axis=1) 
-            Nstd = np.std(_N, axis=1)
+            N = np.mean(_N, axis=1)
             M = np.mean(_M, axis=1) 
             # Change label
             label = r'$H\rightarrow 1$' if H == 1 else r'$H=%.2f$'%(H)
@@ -578,7 +577,7 @@ class Plotter():
         # Limits, labels, etc
         xlim = [1,2] if args.compute else [1,max(alpha_arr)]
         ylabels = [r'$N$', r'$M$', r'$\mathcal{R}$']
-        ylims = [1.05*args.rho / 2, 1.05*args.rho, 1.05*args.rho]
+        ylims = [args.rho/2, 1.05*args.rho, 1.05*args.rho]
         # axin.set_xlim(1,2)
         # axin.set_ylim(0.,ylims[1])
         # axin.set_xlabel(r'$\alpha$', fontsize=12)
@@ -595,12 +594,18 @@ class Plotter():
                     0.0, 1.065, figlabels[i], ha='left', fontsize=14,
                     transform=ax.transAxes
                 )
-            if i%2==0:
+            if i == 1:
                 ax.legend(
                     loc='upper right', fontsize=11, ncol=1, labelspacing=0.1,
                     handletextpad=0.1, borderaxespad=0.1, handlelength=1,
-                    columnspacing=0.6, frameon=False
+                    columnspacing=0.2, frameon=False
                 )
+            # if i==2:
+            #     ax.legend(
+            #         loc='upper right', fontsize=11, ncol=1, labelspacing=0.1,
+            #         handletextpad=0.1, borderaxespad=0.1, handlelength=1,
+            #         columnspacing=0.6, frameon=False
+            #     )
             # else:
             #     axin.xaxis.set_minor_locator(MultipleLocator(0.125))
             ax.xaxis.set_minor_locator(MultipleLocator(0.25))
@@ -1452,7 +1457,7 @@ if __name__ == "__main__":
     # Pjotr.plot_population_densities_fragile(args)
     # Pjotr.plot_population_dynamics(args)
     # Pjotr.plot_population_densities(args)
-    # Pjotr.plot_population_densities_alpha(args)
+    Pjotr.plot_population_densities_alpha(args)
     # Pjotr.plot_population_densities_lambda(args)
     # Pjotr.plot_population_densities_sigma(args)
     # Pjotr.plot_population_densities_H(args)
@@ -1465,12 +1470,12 @@ if __name__ == "__main__":
     ## Environmental related plots
     # Pjotr.plot_environmental_metrics(args)
     # Pjotr.plot_habitat_loss_probability(args)
-    Pjotr.plot_heatmap(args)
+    # Pjotr.plot_heatmap(args)
     
     if not args.save:
         plt.show()
     else:
         for figname, fig in Pjotr.figdict.items():
             print("Saving {}...".format(figname))
-            fig.savefig("figures/{}.pdf".format(figname), bbox_inches='tight')
+            fig.savefig("figures/{}.pdf".format(figname), format='pdf', bbox_inches='tight')
         
