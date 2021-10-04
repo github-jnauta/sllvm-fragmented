@@ -248,7 +248,7 @@ def nb_SLLVM(
                 if label not in empty_labels and not np.any(prey_lattice[patch_indices]):
                     isolated_patches[imeas] += len(patch_indices)
                     # Do not count in future computations, as once a patch is depleted
-                    # it will (and should) never become rehabitated.
+                    # it will (and should) never become reinhabited.
                     empty_labels.append(label)
             # Store the lattice configuration
             if visualize:
