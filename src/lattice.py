@@ -48,7 +48,7 @@ def nb_applyPBC(lattice, num_labels):
     L, _ = lattice.shape
     for i in range(L):
         # Compare left and right        
-        if lattice[i,0]==1 and lattice[i,-1]==1:
+        if lattice[i,0] and lattice[i,-1]:
             if lattice[i,0] != lattice[i,-1]:
                 lattice = np.where(lattice==lattice[i,-1], lattice[i,0], lattice)
                 num_labels -= 1

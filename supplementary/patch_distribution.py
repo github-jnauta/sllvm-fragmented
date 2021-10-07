@@ -23,6 +23,7 @@ if __name__ == "__main__":
     # Allocate
     patch_size = np.zeros(args.nmeasures)
     num_patches = np.zeros(args.nmeasures)
+    percolation = np.zeros(args.nmeasures)
     # Specify bins for distribution computation
     bins = np.logspace(0, np.log10(args.rho*L**2+1), num=args.nbins, dtype=np.int64)
     bins = np.unique(bins)
@@ -36,7 +37,12 @@ if __name__ == "__main__":
         # Compute binary lattice
         lattice = Lattice.binary_lattice(fBs, args.rho)
         # Compute the labelled lattice using periodic boundary conditions
+        __lattice = label(lattice)[0]
         labelled_lattice, num_labels = src.lattice.nb_applyPBC(*label(lattice))
+        perc_x = np.intersect1d(__lattice[0,:], __lattice[-1,:])
+        perc_y = np.intersect1d(__lattice[:,0], __lattice[:,-1])
+        if len(perc_x[perc_x>0]) or len(perc_y[perc_y>0]):
+            percolation[k] = 1
         # Find the label for which lattice entries are empty        
         labels, sizes = np.unique(labelled_lattice, return_counts=True)
         for lab in labels:
@@ -62,8 +68,9 @@ if __name__ == "__main__":
     _dir = f'../data/patch_distribution/{L}x{L}/'
     if not os.path.exists(_dir):
         os.makedirs(_dir)
-    # np.save(_dir+f'patch_size{suffix}', patch_size)
+    np.save(_dir+f'patch_size{suffix}', patch_size)
     np.save(_dir+f'patch_distribution{suffix}', pdf)
-    # np.save(_dir+f'num_patches{suffix}', num_patches)
+    np.save(_dir+f'num_patches{suffix}', num_patches)
+    np.save(_dir+f'percolation{suffix}', percolation)
     # Print closing statement
     print(f'Computed for H={args.H}, \u03C1={args.rho}')
