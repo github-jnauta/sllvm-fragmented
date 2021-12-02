@@ -34,7 +34,7 @@ plt.rcParams.update({
 import src.args 
 
 # Set markers & colors
-markers = ['s', 'o', 'D', '^', '>', '*', 'p', 'h', 'v', '<']
+markers = ['s', 'o', 'D', 'p', '^', '*', '>', 'h', 'v', '<']
 colors = [
     'k', 'navy', 'firebrick', 'darkgreen', 'darkmagenta',# 'seagreen', 
     'darkorange', 'indigo', 'maroon', 'peru', 'orchid'
@@ -117,16 +117,16 @@ class Plotter():
         _rho = [0.1, 0.2, 0.5, 0.9]
         L = 2**args.m
         # Initialize figure
-        fig, axes = plt.subplots(2,2, figsize=(3,3))
+        fig, axes = plt.subplots(1,4, figsize=(4*1.525,3))
         figpdf, axpdf = plt.subplots(1,1, figsize=(2*4/3,2), tight_layout=True)
         _axes = axes.flatten()
         # Specify bins for distribution plot
         bins = np.logspace(0, np.log10(0.1*L**2+1), num=args.nbins, dtype=np.int64)
         bins = np.unique(bins)
         # fig, axes = plt.subplots(1, len(_rho), figsize=(2.5*len(_rho), 2.5), tight_layout=True)
-        # for i, H in enumerate(_H):
-        for i, rho in enumerate(_rho):
-            suffix = "_{L:d}x{L:d}_H{H:.3f}_rho{rho:.3f}".format(L=L, H=args.H, rho=rho)
+        for i, H in enumerate(_H):
+        # for i, rho in enumerate(_rho):
+            suffix = "_{L:d}x{L:d}_H{H:.3f}_rho{rho:.3f}".format(L=L, H=H, rho=args.rho)
             lattice = np.load(_dir+"lattice{suffix:s}.npy".format(suffix=suffix))
             _axes[i].imshow(lattice, cmap='Greys', interpolation='none')
             # pdfsuffix = '_H{:.3f}_rho{:.3f}'.format(H, args.rho)
@@ -140,12 +140,18 @@ class Plotter():
         for i, ax in enumerate(_axes):
             ax.get_xaxis().set_visible(False)
             ax.get_yaxis().set_visible(False)
+            # r"$\rho={:.1f}$".format(_rho[i])
             # r"H={:.2f}".format(_H[i])
             ax.text(
-                0.05, 0.925, r"$\rho={:.1f}$".format(_rho[i]), transform=ax.transAxes, 
-                ha='left', va='top', fontsize=11, 
+                0.05, 0.925, rf'H={_H[i]:.2f}', transform=ax.transAxes, 
+                ha='left', va='top', fontsize=12.5, 
                 bbox=dict(boxstyle="round", ec='none', fc='white')
             )
+            if i == 0:
+                ax.text(
+                    0.01, 1.01, figbflabels[i], ha='left', va='bottom',
+                    fontsize=14, transform=ax.transAxes
+                )
         # axpdf.set_xlim(1e-6, 1)
         # axpdf.set_ylim(1e-6,1.05)
         # locmin = matplotlib.ticker.LogLocator(base=10.0,subs=(0.2,0.4,0.6,0.8),numticks=12)
@@ -165,7 +171,7 @@ class Plotter():
         # )
         # Store
         fig.subplots_adjust(wspace=0.03, hspace=0.03)
-        self.figdict[f'supplementary_example_lattices_rho{args.rho:.1f}'] = fig 
+        self.figdict[f'example_lattices_rho{args.rho:.1f}'] = fig 
         # self.figdict[f'patch_size_distribution_rho{args.rho:.1f}'] = figpdf
 
 
@@ -209,6 +215,66 @@ class Plotter():
         # Store
         self.figdict["initial_lattice"] = fig
 
+    def plot_lattice_habitat_loss(self, args):
+        """ Plot example of habitat loss for low and high levels of fragmentation """
+        L = 2**args.m 
+        # Specify directory
+        _dir = args.ddir+f'sllvm/habitat_loss_example/{L}x{L}/'
+        H_arr = [0.01, 0.50]
+        alphastar_R = [1.4727, 1.1957]
+        # Initialize figure
+        fig, axes = plt.subplots(2,3, figsize=(3,2))
+
+        for i, H in enumerate(H_arr):
+            __dir = _dir+f'H{H:.4f}/'
+            suffix = (
+            '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_mu{:.4f}_'
+            'Lambda{:.4f}_lambda{:.4f}_sigma{:.4f}_alpha{:s}_seed{:d}'.format(
+                args.T, args.N0, args.M0, H, args.rho, 
+                args.mu, args.Lambda_, args.lambda_, args.sigma, '{alpha:.3f}',
+                args.seed
+                )
+            )
+            # Load & plot initial habitat
+            _init_habitat = np.load(__dir+f'init_habitat{suffix.format(alpha=3.)}.npy')
+            axes[i,0].imshow(_init_habitat, cmap='Greys', interpolation='none')
+            # Load & plot for Brownian predators α=3
+            _final_habitat = np.load(__dir+f'final_habitat{suffix.format(alpha=3.)}.npy')   
+            axes[i,1].imshow(_final_habitat, cmap='Greys', interpolation='none')
+            # Load & plot for optimal predators α*
+            alpha = alphastar_R[i] if H == 0.01 else 2.
+            _final_habitat = np.load(__dir+f'final_habitat{suffix.format(alpha=alpha)}.npy')
+            axes[i,2].imshow(_final_habitat, cmap='Greys', interpolation='none')
+        for i in range(len(H_arr)):
+            axes[i,0].text(
+                -0.05, 0.5, rf'$H={H_arr[i]:.2f}$', ha='right', va='center',
+                rotation=90, fontsize=12, transform=axes[i,0].transAxes
+            )
+        # Limits, labels, etc
+        alphalabs = ['', r'$\alpha=3.0$', r'$\alpha=1.47$', '', r'$\alpha=3.0$', r'$\alpha=2.0$']
+        for i, ax in enumerate(axes.flatten()):
+            ax.get_xaxis().set_visible(False)
+            ax.get_yaxis().set_visible(False)
+            if i == 0:
+                ax.text(
+                    0.5, 1.01, r'$t=0$', fontsize=11, ha='center', va='bottom',
+                    transform=ax.transAxes
+                )
+            if i == 1:
+                ax.text(
+                    1.05, 1.01, r'$t=T$', fontsize=11, ha='center', va='bottom',
+                    transform=ax.transAxes
+                )
+            ax.text(
+                0.5, -0.115, alphalabs[i], fontsize=8.5, ha='center', va='center',
+                transform=ax.transAxes
+            )
+    
+        fig.subplots_adjust(wspace=0.1, hspace=0.2)
+        # Save
+        self.figdict['example_lattice_habitat_loss'] = fig 
+
+
     def plot_patch_distribution(self, args):
         """ Plot measurements on the distribution over the patches generated 
             using fBm for different Hurst exponents H and occupancy levels ρ
@@ -224,33 +290,7 @@ class Plotter():
         bins = np.logspace(0, np.log10(0.1*L**2+1), num=args.nbins, dtype=np.int64)
         bins = np.unique(bins)
         # Initialize figure
-        fig = plt.figure(figsize=(7, 7/4*3), tight_layout=True)
-        gs = fig.add_gridspec(4,4)
-        ax1 = fig.add_subplot(gs[0:2,0:2])
-        ax2 = fig.add_subplot(gs[0:2,2:4])
-        ax3 = fig.add_subplot(gs[2:4,1:3])
-        axes = [ax1, ax2, ax3]
-        # Allocate
-        patch_size = np.zeros((len(H_arr), args.nmeasures))
-        num_patches = np.zeros((len(H_arr), args.nmeasures))
-        
-        # Load data & plot
-        for i, rho in enumerate(rho_arr):
-            for j, H in enumerate(H_arr):
-                suffix = '_H{:.3f}_rho{:.3f}'.format(H, rho)
-                patch_size[j,:] = np.load(_dir+f'patch_size{suffix}.npy')
-                num_patches[j,:] = np.load(_dir+f'num_patches{suffix}.npy')
-            # Plot
-            mean_size = np.mean(patch_size, axis=1) / L**2 / rho
-            axes[0].semilogx(
-                H_arr, mean_size, color='k', marker=markers[i], mfc='white',
-                markersize=4, label=r'$\rho=%.1f$'%(rho)
-            )
-            mean_num = np.mean(num_patches, axis=1)
-            axes[1].semilogx(
-                H_arr, mean_num, color='k', marker=markers[i], mfc='white',
-                markersize=4, label=r'$\rho=%.1f$'%(rho)
-            )
+        fig, ax = plt.subplots(1,1, figsize=(2.75,2.25/4*3))
 
         for i, H in enumerate([0.01, 0.2, 0.5, 0.9]):
             # Plot distribution
@@ -258,50 +298,130 @@ class Plotter():
             pdf = np.load(_dir+f'patch_distribution{suffix}.npy')
             CCDF = np.cumsum(pdf[::-1])[::-1]
             color = matplotlib.colors.colorConverter.to_rgba('lightgrey')
-            axes[2].loglog(
-                bins/(L**2), CCDF, color='k', marker=markers[i], mfc=color, mec='k',
-                markersize=4, label=r'$H=%.2f$'%(H), linestyle='--', dashes=(2,1)
+            ax.loglog(
+                bins/(L**2), CCDF, color=colors[i], marker=markers[i], mfc='white',
+                markersize=3.5, label=r'$H=%.2f$'%(H)
             )
-        axes[2].plot(
+        ax.plot(
             [0.1,0.1], [0,1], color='k', linestyle=':', dashes=(2,2), linewidth=0.75
         )
         
-        # Limits, labels, etc
-        ylabels = [r'maximum patch size', r'mean number of patches', r'$P(X\geq x)$']
-        ylims = [[0,1.05], [0,6e3], [1e-6,1.05]]
-        for i, ax in enumerate(axes):
-            xlim = [min(H_arr), 1] if i < 2 else [1/L**2,1]
-            ax.set_xlim(xlim)                
-            ax.set_ylim(ylims[i])
-            if i < 2:
-                ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
-                ax.set_xlabel(r'$H$', fontsize=16)
-            else:
-                ax.set_xlabel(r'$x/L^2$', fontsize=15)
-                ax.text(
-                    0.9, 0.55, r'$x=\rho L^2$', ha='center', transform=ax.transAxes,
-                    fontsize=14, rotation=90
-                )
-                ax.legend(
-                    loc='lower left', frameon=False, handletextpad=0.4, fontsize=13,
-                    handlelength=1, borderaxespad=0.1, labelspacing=0.1
-                )
-                locmin = matplotlib.ticker.LogLocator(base=10.0,subs=(0.2,0.4,0.6,0.8),numticks=12)
-                ax.xaxis.set_minor_locator(locmin)
-                ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
-            fontsize = 14 if i < 2 else 16
-            ax.set_ylabel(ylabels[i], fontsize=fontsize)
-            if i == 1:
-                ax.legend(
-                    loc='center left', frameon=False, handletextpad=0.4, fontsize=13,
-                    handlelength=1, borderaxespad=0.1, labelspacing=0.1
-                )
-            ax.text(
-                0.0, 1.11, figlabels[i], ha='center', fontsize=15, transform=ax.transAxes
-            )
+        # Limits, labels, etc        
+        # for i, ax in enumerate(axes):
+        ax.set_ylabel(r'$P(X\geq x)$', fontsize=14)
+        ax.set_xlabel(r'$x/L^2$', fontsize=14)
+        ax.set_xlim([1e-6,0.4])
+        ax.set_ylim([1e-6,1.05])
+        ax.text(
+            0.9, 0.6, r'$x=\rho L^2$', ha='center', transform=ax.transAxes,
+            fontsize=10, rotation=90
+        )
+        ax.legend(
+            loc='lower left', frameon=False, handletextpad=0.2, fontsize=11,
+            handlelength=1, borderaxespad=0, labelspacing=0.1
+        )
+        locmin = matplotlib.ticker.LogLocator(base=10.0,subs=(0.2,0.4,0.6,0.8),numticks=12)
+        ax.yaxis.set_minor_locator(locmin)
+        ax.yaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+        xmin = 1/L**2
+        ax.semilogx(
+            [xmin,xmin], [1.5e-3,1.05], color='k', linestyle=':', linewidth=0.65
+        )
+        ax.text(
+            xmin, 5e-3, r'$x=1$', rotation=90, ha='center', va='bottom',
+            fontsize=10, bbox=dict(boxstyle='round', fc='white', alpha=0.85, ec='none', pad=0.1)
+        )
+        ax.set_xticks([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1,1])
+        ax.xaxis.set_minor_locator(locmin)
+        ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+        ax.tick_params(axis='both', labelsize=9)
         
         # Save
-        self.figdict['patch_distribution'] = fig
+        self.figdict['patchsize_distribution'] = fig
+
+    def plot_patch_percolation(self, args):
+        """ Plot percolation probability p as a function of ρ and H """
+        L = 2**args.m
+        # Specify variable arrays
+        H_arr = [0.01, 0.2, 0.5, 1.0]
+        rho_arr = [0.05*i for i in range(1,20)]
+        xax = [0] + rho_arr + [1.]
+        fitax = np.linspace(0, 1, num=250)
+        # Specify directory
+        _ddir = f'data/patch_distribution/{L:d}x{L:d}/'
+        # Initialize figure        
+        fig, axes = plt.subplots(1,2, figsize=(5,1.5))
+        fig.subplots_adjust(wspace=0.35, hspace=0.075)
+        # Load & plot
+        for i, H in enumerate(H_arr):
+            # Allocate
+            xmax = np.zeros(len(rho_arr)+2)
+            xmax[-1] = 1
+            p = np.zeros(len(rho_arr)+2)
+            p[-1] = 1.
+            # Load data
+            for j, rho in enumerate(rho_arr):
+                suffix = '_H{:.3f}_rho{:.3f}'.format(H, rho)
+                # Percolation probability
+                _p = np.load(_ddir+f'percolation{suffix}.npy')
+                p[j+1] = np.mean(_p)
+                # Maximum patch size
+                _xmax = np.load(_ddir+f'patch_size{suffix}.npy')
+                xmax[j+1] = np.mean(_xmax) / (rho*L**2)
+            # Plot xmax
+            popt, _ = curve_fit(Plotter.sigmoid, xax[1:], xmax[1:])
+            __fitax = fitax[np.argmax(fitax>=0.05):]
+            axes[0].plot(__fitax, Plotter.sigmoid(__fitax, *popt), color=colors[i], linewidth=0.85)
+            axes[0].plot(
+                xax[1:], xmax[1:], color=colors[i], marker=markers[i], markersize=3.5, mfc='white', 
+                linestyle='none'
+            )
+            axes[0].plot(
+                [], [], color=colors[i], marker=markers[i], markersize=3.5, mfc='white', 
+                linestyle='-', linewidth=0.85, label=rf'$H={H:.2f}$'
+            )
+            # Plot percolation
+            popt, _ = curve_fit(Plotter.sigmoid, xax, p)
+            axes[1].plot(fitax, Plotter.sigmoid(fitax, *popt), color=colors[i], linewidth=0.85)
+            
+            axes[1].plot(
+                xax, p, color=colors[i], marker=markers[i], markersize=3.5, mfc='white', 
+                linestyle='none'
+            )
+        # Limits, labels, etc
+        ylabel = [r'$x_{\text{max}}/\rho L^2$', r'$p$']
+        for i, ax in enumerate(axes):
+            ax.set_xlim(0, 1)
+            ax.set_ylim(0, 1.01)
+            ax.set_xlabel(r'$\rho$', fontsize=16)
+            ax.set_ylabel(ylabel[i], fontsize=16)
+            ax.set_xticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+            ax.xaxis.set_minor_locator(MultipleLocator(0.1))
+            ax.yaxis.set_minor_locator(MultipleLocator(0.1))
+            if i == 0:
+                ax.legend(
+                    loc='lower right', fontsize=11.5, labelspacing=0., handlelength=1, 
+                    handletextpad=0.1, borderaxespad=-0.1, frameon=False
+                )
+            else:
+            
+                ax.text(
+                    0.18, 0.65, rf'$\rho={args.rho:.1f}$', rotation=90, ha='right', va='center',
+                    fontsize=14
+                )
+            ax.text(
+                0.01, 1.0, figbflabels[i+1], ha='left', va='bottom',
+                fontsize=14, transform=ax.transAxes
+            )
+            # Some helper lines
+            ax.plot(
+                [args.rho, args.rho], [0, ax.get_ylim()[1]], color='k', linestyle=':', 
+                linewidth=0.75, zorder=-1
+            )
+        # Save
+        self.figdict[f'percolation'] = fig 
+                
+
 
     ## Animated plots
     def plot_lattice_dynamics(self, args):
@@ -638,7 +758,8 @@ class Plotter():
         # H_arr = np.loadtxt(_dir+'H.txt')
         H_arr = [0.01, 0.1, 0.2, 0.5, 1.0][::-1]
         # Initialize figure
-        fig, axes = plt.subplots(1,3, figsize=(8,2/4*3))
+        # fig, axes = plt.subplots(1,3, figsize=(8,2/4*3))
+        fig, axes = plt.subplots(2,1, figsize=(2.5,4.5/4*3), sharex=True)
         axloss = axes[0].inset_axes([0.575,0.485,0.4,0.475])
         # figR, axR = plt.subplots(1,1, figsize=(3.5,3.5/4*3), tight_layout=True)
         # Load data & plot 
@@ -660,31 +781,31 @@ class Plotter():
             _i = len(H_arr) - i - 1    
             axes[0].plot(
                 alpha_arr, N, color=colors[_i], marker=markers[_i], mfc='white',
-                markersize=3, linewidth=0.85, label=label, zorder=len(H_arr)-_i
+                markersize=3.5, linewidth=0.85, label=label, zorder=len(H_arr)-_i
             )
             axes[1].plot(
                 alpha_arr, M, color=colors[_i], marker=markers[_i], mfc='white',
-                markersize=3, linewidth=0.85, label=label, zorder=len(H_arr)-_i
+                markersize=3.5, linewidth=0.85, label=label, zorder=len(H_arr)-_i
             )
-            _D = (Plotter.true_diversity(_N, _M, q=1)-1)
-            _R = _D * (_N+_M)
-            R = np.mean(_R, axis=1)
-            _maxR = max(_maxR, np.max(R))
-            axes[2].plot(
-                alpha_arr, R, color=colors[_i], marker=markers[_i], mfc='white',
-                markersize=3, linewidth=0.85, label=label, zorder=len(H_arr)-_i
-            )
+            # _D = (Plotter.true_diversity(_N, _M, q=1)-1)
+            # _R = _D * (_N+_M)
+            # R = np.mean(_R, axis=1)
+            # _maxR = max(_maxR, np.max(R))
+            # axes[2].plot(
+            #     alpha_arr, R, color=colors[_i], marker=markers[_i], mfc='white',
+            #     markersize=3, linewidth=0.85, label=label, zorder=len(H_arr)-_i
+            # )
             # Draw helper line to display catastropic extinction when predators
             # cannot adapt quickly to increased fragmentation
             if H == 1:
                 Nhealthy = N 
                 _alpha_max = alpha_arr[np.argmax(N==np.max(N))]
-                for ax in [axes[0], axes[2]]:
-                    ax.plot(
-                        [_alpha_max, _alpha_max], [0,1], linestyle='--', linewidth=0.9,
-                        color='k', zorder=len(H_arr)+1
-                    )
-            elif H < 0.5:
+                # for ax in [axes[0], axes[2]]:
+                axes[0].plot(
+                    [_alpha_max, _alpha_max], [0,1], linestyle='--', linewidth=0.9,
+                    color='k', zorder=-1
+                )
+            elif H < 1:
                 __N = np.ma.divide(N, Nhealthy).filled(0)
                 axloss.plot(
                     alpha_arr, __N, color=colors[_i], marker=markers[_i], mfc='white',
@@ -692,25 +813,26 @@ class Plotter():
                 )
         # Limits, labels, etc, for inset axes
         axloss.set_xlim(1,3.05)
-        axloss.set_ylim(0,1)
+        axloss.set_ylim(0,1.1)
         axloss.set_xticks([1,3])
         axloss.set_yticks([0,1])
         axloss.text(
-            -0.15, 0.5, r'$N_{\text{rel}}$', fontsize=12, ha='right', va='center',
+            -0.125, 0.5, r'$N_{\text{rel}}$', fontsize=12, ha='right', va='center',
             transform=axloss.transAxes, rotation=90
         )
         axloss.text(
-            0.5, -0.3, r'$\alpha$', fontsize=12, ha='center', va='center',
+            0.5, -0.4, r'$\alpha$', fontsize=12, ha='center', va='center',
             transform=axloss.transAxes
         )
         axloss.xaxis.set_minor_locator(MultipleLocator(0.5))
         axloss.yaxis.set_minor_locator(MultipleLocator(0.25))
         axloss.tick_params(axis='both', which='major', labelsize=7)
         axloss.plot(
-            [_alpha_max, _alpha_max], [0,1], linestyle=':', linewidth=1,
-            color='k', zorder=len(H_arr)+1
+            [_alpha_max, _alpha_max], axloss.get_ylim(), linestyle='--', linewidth=1,
+            color='k', zorder=-1
         )
         axloss.xaxis.set_minor_locator(MultipleLocator(0.25))
+        axloss.xaxis.set_major_locator(MultipleLocator(1))
         # Limits, labels, etc, for remaining axes
         xlim = [1,2] if args.compute else [1,max(alpha_arr)]
         ylabels = [r'$N$', r'$M$', r'$\mathcal{R}$']
@@ -719,42 +841,126 @@ class Plotter():
         for i, ax in enumerate(_axes):
             if i == 0:
                 ax.annotate(
-                    r'$\alpha^*_{H\rightarrow 1}$', xy=(_alpha_max, 0.0925), xytext=(1.665,0.0925),
-                    ha='center', va='center', arrowprops=dict(arrowstyle='->')
+                    r'$\alpha^*_{H\rightarrow 1}$', xy=(_alpha_max, 0.0925), xytext=(1.675,0.0925),
+                    ha='center', va='center', arrowprops=dict(arrowstyle='->'), fontsize=10.5
                 )     
             ax.set_xlim(xlim)
             ax.set_xticks([1., 1.5, 2., 2.5, 3.])
+            ax.xaxis.set_minor_locator(MultipleLocator(0.1))
             ax.set_yticks([0,0.1,0.2])
             mloc = 0.025 if i == 0 else 0.05
             ax.yaxis.set_minor_locator(MultipleLocator(mloc))
             # ax.set_xticks([1+0.5*i for i in range(7)])
             ax.set_ylim(0, ylims[i])
-            ax.set_xlabel(r'$\alpha$', fontsize=14)
             ax.set_ylabel(ylabels[i], fontsize=14)
             ax.text(
-                0.0, 1.065, figbflabels[i], ha='left', fontsize=14,
+                0.01, 1., figbflabels[i], ha='left', va='bottom', fontsize=14,
                 transform=ax.transAxes
             )
             if i == 1:
+                ax.set_xlabel(r'$\alpha$', fontsize=14)
                 ax.legend(
-                    loc='upper right', fontsize=10, ncol=1, labelspacing=0.1,
+                    loc='upper right', fontsize=11, ncol=1, labelspacing=0.1,
                     handletextpad=0.1, borderaxespad=0.1, handlelength=1,
                     columnspacing=0.2, frameon=False
                 )
-            # if i==2:
-            #     ax.legend(
-            #         loc='upper right', fontsize=11, ncol=1, labelspacing=0.1,
-            #         handletextpad=0.1, borderaxespad=0.1, handlelength=1,
-            #         columnspacing=0.6, frameon=False
-            #     )
-            # else:
-            #     axin.xaxis.set_minor_locator(MultipleLocator(0.125))
-            ax.xaxis.set_minor_locator(MultipleLocator(0.25))
                 
-        fig.subplots_adjust(wspace=0.4)
+        fig.subplots_adjust(wspace=0.03)
         # Save
         self.figdict[f'population_densities_alpha_rho{args.rho}'] = fig 
         # self.figdict[f'richness_alpha_rho{args.rho}'] = figR
+
+    def plot_species_richness(self, args):
+        """ Plot the species richness R """ 
+        L = 2**args.m 
+        ## Plot R as a function of α
+        # Specify directory        
+        _dir = args.rdir+'sllvm/alpha/'
+        _rdir = args.rdir+'sllvm/alpha/{L:d}x{L:d}/'.format(L=L)
+        # Load variables
+        alpha_arr = np.loadtxt(_dir+'alpha.txt')
+        H_arr = [0.01, 0.1, 0.2, 0.5, 1.0]
+        # Initialize figure
+        # fig, axes = plt.subplots(2,1, figsize=(2.75,5.25/4*3))
+        fig, axes = plt.subplots(1, 2, figsize=(2*2.75,2.25/4*3), sharey=True)
+        fig.subplots_adjust(hspace=0.3)
+        for i, H in enumerate(H_arr):
+            # Load data
+            suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_' \
+                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
+                args.T, args.N0, args.M0, H, 
+                args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
+            )
+            _N = np.load(_rdir+'N{:s}.npy'.format(suffix)) / L**2
+            _M = np.load(_rdir+'M{:s}.npy'.format(suffix)) / L**2
+            # Change label
+            label = r'$H\rightarrow 1$' if H == 1 else r'$H=%.2f$'%(H)
+            _D = (Plotter.true_diversity(_N, _M, q=1)-1)
+            _R = _D * (_N+_M)
+            R = np.mean(_R, axis=1)
+            axes[0].plot(
+                alpha_arr, R, color=colors[i], marker=markers[i], mfc='white',
+                markersize=3.5, linewidth=0.85, label=label, zorder=len(H_arr)-i
+            )
+        ## PLot R as a function of H 
+        # Specify directory
+        _dir = args.rdir+'sllvm/H/'
+        _rdir = args.rdir+'sllvm/H/{L:d}x{L:d}/'.format(L=L)
+        alpha_arr = [1.5, 1.8, 2.0, 2.3, 2.5]
+        H_arr = np.loadtxt(_dir+'H.txt')
+        for i, alpha in enumerate(alpha_arr):
+            suffix = '_T{:d}_N{:d}_M{:d}_rho{:.3f}_' \
+                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}_alpha{:.3f}'.format(
+                args.T, args.N0, args.M0,
+                args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma, alpha
+            )
+            _N = np.load(_rdir+f'N{suffix}.npy') / L**2
+            _M = np.load(_rdir+f'M{suffix}.npy') / L**2
+            _D = Plotter.true_diversity(_N, _M)
+            _R = (_D-1)*(_N+_M)
+            R = np.mean(_R, axis=1)
+            axes[1].plot(
+                H_arr, R, color=colors[i], marker=markers[i], mfc=lightcolors[i],
+                markersize=3.5, linewidth=0.85, label=rf'$\alpha={alpha:.1f}$'
+            )
+        # Limits, labels, etc
+        xlabels = [r'$\alpha$', r'$H$']
+        xlims = [[1,3], [0,1]]
+        ylim = [0.2, 0.2]
+        for i, ax in enumerate(axes):
+            if i == 0:
+                ax.set_ylabel(r'$\mathcal{R}$', fontsize=14)
+            ax.set_xlabel(xlabels[i], fontsize=14)
+            ax.set_yticks([0.,0.1, 0.2])
+            ax.set_xlim(xlims[i])
+            ax.set_ylim(0, ylim[i])
+            ax.text(
+                0.0, 1., figbflabels[i], ha='left', va='bottom', fontsize=14,
+                transform=ax.transAxes
+            )
+            if i == 0:
+                ax.legend(
+                    loc='upper right', fontsize=11, ncol=1, labelspacing=0.1,
+                    handletextpad=0.1, borderaxespad=0.1, handlelength=1,
+                    columnspacing=0.2, frameon=False
+                )
+            else:                
+                (handles, labels) = plt.gca().get_legend_handles_labels()
+                handles.insert(2, plt.Line2D([],[], linestyle='none'))
+                labels.insert(2, '')
+                ax.legend(
+                    handles, labels, loc='upper right', fontsize=11, 
+                    frameon=False, labelspacing=0.,
+                    handletextpad=0.2, handlelength=0.9, borderaxespad=-0.1,
+                    ncol=2, columnspacing=0.2
+                )
+            xloc = 0.1 if i == 0 else 0.05
+            ax.xaxis.set_minor_locator(MultipleLocator(xloc))
+            ax.yaxis.set_minor_locator(MultipleLocator(0.025))
+        # Adjust spacing between subplots
+        fig.subplots_adjust(wspace=0.15, hspace=0.5)
+        # Save
+        self.figdict[f'species_richness_rho{args.rho:.2f}'] = fig
 
     def plot_population_densities_lambda(self, args):
         """ Plot population densities versus λ """
@@ -907,8 +1113,6 @@ class Plotter():
                     loc='upper right', fontsize=12, frameon=False, labelspacing=0.1,
                     handletextpad=0.1, handlelength=1, borderaxespad=0
                 )
-            
-
 
     def plot_population_densities_H(self, args):
         """ Plot populations densites as a function of H 
@@ -921,10 +1125,9 @@ class Plotter():
         # Load variables
         # alpha_arr = np.loadtxt(_dir+'alpha.txt')
         alpha_arr = [1.5, 1.8, 2.0, 2.3, 2.5]
-        # H_arr = np.loadtxt(_dir+'H.txt')
-        H_arr = [0.05*i for i in range(21)]
+        H_arr = np.loadtxt(_dir+'H.txt')
         # Initialize figure        
-        fig, axes = plt.subplots(1,3, figsize=(8,2/4*3))
+        fig, axes = plt.subplots(2,1, figsize=(2.5,4.5/4*3), sharex=True)
         # Load data & plot 
         for i, alpha in enumerate(alpha_arr):
             suffix = '_T{:d}_N{:d}_M{:d}_rho{:.3f}_' \
@@ -936,6 +1139,7 @@ class Plotter():
             _M = np.load(_rdir+f'M{suffix}.npy') / L**2
             N = np.mean(_N, axis=1) 
             M = np.mean(_M, axis=1) 
+            print(alpha, N)
             axes[0].plot(
                 H_arr, N,
                 color=colors[i], marker=markers[i], mfc=lightcolors[i],
@@ -945,43 +1149,34 @@ class Plotter():
                 H_arr, M, color=colors[i], marker=markers[i], mfc=lightcolors[i],
                 markersize=3, linewidth=0.85, label=rf'$\alpha={alpha:.1f}$'
             )
-            _D = Plotter.true_diversity(_N, _M)
-            _R = (_D-1)*(_N+_M)
-            R = np.mean(_R, axis=1)
-            axes[2].plot(
-                H_arr, R, color=colors[i], marker=markers[i], mfc=lightcolors[i],
-                markersize=3, linewidth=0.85, label=rf'$\alpha={alpha:.1f}$'
-            )
         # Limits, labels, etc
         ylabels = [r'$N$', r'$M$', r'$\mathcal{R}$']
         ymax = [0.1, 0.1, 0.2]
         for i, ax in enumerate(axes):
-            ax.set_xticks([0,0.2,0.4,0.6,0.8,1])
-            if i < 2:
-                ax.set_yticks([0, 0.05, 0.1])
-            mloc = 0.01 if i < 2 else 0.025
-            ax.yaxis.set_minor_locator(MultipleLocator(mloc))
+            ax.set_xticks([0,0.2,0.4,0.6,0.8,1])            
+            ax.set_yticks([0, 0.1, 0.2])
+            ax.yaxis.set_minor_locator(MultipleLocator(0.025))
             ax.set_xlim(0, 1)
             ax.set_ylim(0, ymax[i])
-            ax.set_xlabel(r'$H$', fontsize=14)
             ax.set_ylabel(ylabels[i], fontsize=14)
-            ax.xaxis.set_minor_locator(MultipleLocator(0.1))
+            ax.xaxis.set_minor_locator(MultipleLocator(0.05))
             if i == 1:
+                ax.set_xlabel(r'$H$', fontsize=14)
                 (handles, labels) = plt.gca().get_legend_handles_labels()
                 handles.insert(2, plt.Line2D([],[], linestyle='none'))
                 labels.insert(2, '')
                 ax.legend(
-                    handles, labels, loc='upper right', fontsize=10, 
+                    handles, labels, loc='upper right', fontsize=11, 
                     frameon=False, labelspacing=0.,
                     handletextpad=0.2, handlelength=0.9, borderaxespad=-0.1,
                     ncol=2, columnspacing=0.2
                 )
             ax.text(
-                0.0, 1.065, figbflabels[i], ha='left', fontsize=14,
+                0.01, 1.0, figbflabels[i+2], ha='left', va='bottom', fontsize=14,
                 transform=ax.transAxes
             )
 
-        fig.subplots_adjust(wspace=0.4)
+        fig.subplots_adjust(wspace=0.03)
         # Save
         self.figdict[f'population_densities_H_rho{args.rho:.1f}'] = fig
         # self.figdict[f'richness_H_rho{args.rho:.1f}'] = figR
@@ -1003,6 +1198,8 @@ class Plotter():
         lambda_star = np.zeros(len(sigma_arr))
         # Initialize figure
         fig, axes = plt.subplots(2,1, figsize=(3,5/4*3), sharex=True)
+        # fig, axes = plt.subplots(1, 2, figsize=(2*3.25,2.25/4*3))
+        fig.subplots_adjust(wspace=0.275)
         axin = axes[0].inset_axes((0.16, 0.45, 0.45, 0.45))
         # Load and plot
         for i, sigma in enumerate(sigma_arr):            
@@ -1017,18 +1214,22 @@ class Plotter():
                 N = np.mean(_N, axis=1)
                 M = np.mean(_M, axis=1)
                 # R = (N+M)*(Plotter.true_diversity(N,M) - 1)
-                axes[0].semilogx(
+                opacity = 0.8 if alpha==-1 else 1
+                mfc = matplotlib.colors.to_rgba('white', opacity)
+                line, = axes[0].semilogx(
                     lambda_arr, N, color=colors[i], marker=markers[i], linestyle=linestyles[j],
-                    linewidth=0.85, mfc='white', markersize=3.5, label=rf'$\sigma={sigma:.2f}$'
+                    linewidth=0.85, mfc=mfc, markersize=3.5, label=rf'$\sigma={sigma:.2f}$'
                 )
                 axes[1].semilogx(
                     lambda_arr, M, color=colors[i], marker=markers[i], linestyle=linestyles[j],
-                    linewidth=0.85, mfc='white', markersize=3.5, label=rf'$\sigma={sigma:.2f}$'
+                    linewidth=0.85, mfc='white', markersize=3.5, label=rf'$\sigma={sigma:.2f}$',
+                    alpha=opacity
                 )
                 if alpha == -1:
                     axin.semilogx(
                         lambda_arr[1:18], N[1:18], color=colors[i], marker=markers[i], 
-                        linestyle=linestyles[j], linewidth=0.85, mfc='white', markersize=3
+                        linestyle=linestyles[j], linewidth=0.85, mfc='white', markersize=2.75,
+                        alpha=opacity
                     )
                     
                 # axes[2].semilogx(
@@ -1052,8 +1253,8 @@ class Plotter():
         mean_lambda_star = 10**(np.mean(np.log10(lambda_star)))
         # Indicate it in axis
         axes[1].text(
-            0.8*mean_lambda_star, 0.04, r'$\widehat\lambda\approx{:.2f}$'.format(mean_lambda_star), 
-            fontsize=11, ha='center', rotation=90
+            0.8*mean_lambda_star, 0.04, r'$\hat\lambda\approx{:.2f}$'.format(mean_lambda_star), 
+            fontsize=12, ha='center', rotation=90
         )
         
         # Limits, labels, etc
@@ -1095,17 +1296,17 @@ class Plotter():
             ax.set_ylim(0, ylims[i])
             ax.set_ylabel(ylabels[i], fontsize=14)
             ax.text(
-                0.01, 1.01, figbflabels[i], ha='left', va='bottom', 
+                0.0, 1.01, figbflabels[i], ha='left', va='bottom', 
                 fontsize=14, transform=ax.transAxes
             )
             yloc = 0.05 if i == 0 else 0.025
             ax.yaxis.set_minor_locator(MultipleLocator(yloc))
             # Legend
             if i == 1:
-                ax.set_xlabel(r'$\widehat\lambda$', fontsize=14)
+                ax.set_xlabel(r'$\hat{\lambda}$', fontsize=14)
                 sigma_legend = plt.legend(
                     sigma_lines, sigma_labels, 
-                    loc='lower left', fontsize=9, frameon=False, borderaxespad=-0.15,
+                    loc='lower left', fontsize=9.5, frameon=False, borderaxespad=-0.15,
                     labelspacing=0, handlelength=0.5, handletextpad=0.2
                 )
                 alpha_legend = plt.legend(
@@ -1119,15 +1320,12 @@ class Plotter():
         # Save
         self.figdict[f'population_densities_sigma_H{args.H:.4f}_rho{args.rho:.2f}'] = fig 
     
-    def plot_optimal_values(self, args):
-        """ Plot optimal values such as 
-            - the Levy parameter α* as a function of H 
-            - H* as a function of α   
-        """
+    def plot_preferred_fragmentation(self, args):
+        """ Plot preferred fragmentation """
         L = 2**args.m
         # Specify directory        
-        _dir = args.rdir+'sllvm/optvalues/'
-        _rdir = args.rdir+'sllvm/optvalues/{L:d}x{L:d}/'.format(L=L)
+        _dir = args.rdir+'sllvm/ideal_fragmentation/'
+        _rdir = args.rdir+'sllvm/ideal_fragmentation/{L:d}x{L:d}/'.format(L=L)
         # Load variable arrays
         alpha_arr = np.loadtxt(_dir+'alpha.txt')
         H_arr = np.loadtxt(_dir+'H.txt')
@@ -1148,9 +1346,9 @@ class Plotter():
         _Hstar_N = np.load(_rdir+f'Hstar_N{suffix}.npy')
         _Hstar_M = np.load(_rdir+f'Hstar_M{suffix}.npy')
         _Hstar_R = np.load(_rdir+f'Hstar_R{suffix}.npy')
-        Hstar_N = np.mean(_Hstar_N, axis=1)
-        Hstar_M = np.mean(_Hstar_M, axis=1)
-        Hstar_R = np.mean(_Hstar_R, axis=1)
+        Hstar_N = np.nanmean(_Hstar_N, axis=1)
+        Hstar_M = np.nanmean(_Hstar_M, axis=1)
+        Hstar_R = np.nanmean(_Hstar_R, axis=1)
         Hstar_Nstd = np.std(_Hstar_N, axis=1)
         Hstar_Mstd = np.std(_Hstar_M, axis=1)
         Hstar_Rstd = np.std(_Hstar_R, axis=1)
@@ -1160,7 +1358,7 @@ class Plotter():
         for i, idx in enumerate(Hidxs):
             print(H[i], alphastar_R[idx])
         # Print H* for some α
-        alpha = [1.1, 2.0, 2.5]
+        alpha = [1.1, 2.0, 2.5, 3.0]
         alphaidxs = [np.flatnonzero(alpha_arr==a) for a in alpha]
         for i, idx in enumerate(alphaidxs):
             print(alpha[i], Hstar_N[idx])
@@ -1201,6 +1399,8 @@ class Plotter():
             np.savetxt(_dir+'Hstar_N.txt', Hstar_N, fmt='%.4f')
             np.savetxt(_dir+'Hstar_M.txt', Hstar_M, fmt='%.4f')
             np.savetxt(_dir+'Hstar_R.txt', Hstar_R, fmt='%.4f')
+        plt.show()
+        exit()
         # H_plot = [0.01, 0.2, 0.5, 1.]
         # for __H in H_plot:
         #     print(__H, alphastar_R[np.argwhere(H_arr==__H)])
@@ -1235,39 +1435,39 @@ class Plotter():
         _N = np.load(_rdir+f'N_optimal_fragmentation_N{suffix}.npy')
         N = np.mean(_N, axis=1) / L**2 
         axes[1].plot(
-            alpha_arr[1:], N[1:], color='k', marker='s', mfc='k', markersize=3,
-            linewidth=0.85, markevery=2
+            alpha_arr[1:], N[1:], color='k', marker='s', mfc='white', markersize=3,
+            linewidth=0.85, markevery=2, label=r'$N^*_{N}$'
         )
         _M = np.load(_rdir+f'M_optimal_fragmentation_N{suffix}.npy')
         M = np.mean(_M, axis=1) / L**2
         axes[1].plot(
-            alpha_arr[1:], M[1:], color='k', marker='s', mfc='white', markersize=3,
-            linestyle='-', linewidth=0.85, markevery=2
+            alpha_arr[1:], M[1:], color='k', marker='s', mfc='lightgrey', markersize=3,
+            linestyle='-', linewidth=0.85, markevery=2, label=r'$M^*_{N}$'
         )
         _N = np.load(_rdir+f'N_optimal_fragmentation_M{suffix}.npy')
         N = np.mean(_N, axis=1) / L**2 
         axes[1].plot(
-            alpha_arr[1:], N[1:], color='navy', marker='D', mfc='navy', markersize=3,
-            linestyle=':', linewidth=0.85, markevery=2
+            alpha_arr[1:], N[1:], color='navy', marker='D', mfc='white', markersize=3,
+            linestyle=':', linewidth=0.85, markevery=2, label=r'$N^*_{M}$'
         )
         _M = np.load(_rdir+f'M_optimal_fragmentation_M{suffix}.npy')
         M = np.mean(_M, axis=1) / L**2
         axes[1].plot(
-            alpha_arr[1:], M[1:], color='navy', marker='D', mfc='white', markersize=3,
-            linestyle=':', linewidth=0.85, markevery=2
+            alpha_arr[1:], M[1:], color='navy', marker='D', mfc='steelblue', markersize=3,
+            linestyle=':', linewidth=0.85, markevery=2, label=r'$M^*_{M}$'
         )
-        _N = np.load(_rdir+f'N_optimal_fragmentation_R{suffix}.npy')
-        N = np.mean(_N, axis=1) / L**2 
-        axes[1].plot(
-            alpha_arr[1:], N[1:], color='firebrick', marker='o', mfc='navy', markersize=3,
-            linestyle=':', linewidth=0.85, markevery=2
-        )
-        _M = np.load(_rdir+f'M_optimal_fragmentation_R{suffix}.npy')
-        M = np.mean(_M, axis=1) / L**2
-        axes[1].plot(
-            alpha_arr[1:], M[1:], color='firebrick', marker='o', mfc='white', markersize=3,
-            linestyle=':', linewidth=0.85, markevery=2
-        )
+        # _N = np.load(_rdir+f'N_optimal_fragmentation_R{suffix}.npy')
+        # N = np.mean(_N, axis=1) / L**2 
+        # axes[1].plot(
+        #     alpha_arr[1:], N[1:], color='firebrick', marker='o', mfc='navy', markersize=3,
+        #     linestyle=':', linewidth=0.85, markevery=2
+        # )
+        # _M = np.load(_rdir+f'M_optimal_fragmentation_R{suffix}.npy')
+        # M = np.mean(_M, axis=1) / L**2
+        # axes[1].plot(
+        #     alpha_arr[1:], M[1:], color='firebrick', marker='o', mfc='white', markersize=3,
+        #     linestyle=':', linewidth=0.85, markevery=2
+        # )
 
         # Limits, labels, etc
         axes[0].set_ylabel(r'$H^*$', fontsize=14)
@@ -1285,9 +1485,17 @@ class Plotter():
             ax.set_ylabel(r'$H^*$', fontsize=14)
             ax.xaxis.set_minor_locator(MultipleLocator(0.125))
             ax.yaxis.set_minor_locator(MultipleLocator(yloc[i]))
+            ncol = 1 if i == 0 else 2
+            loc = 'lower right' if i==0 else 'upper right'
+
+            handles, labels = ax.get_legend_handles_labels()
+            if i == 1:
+                order = [0,2,1,3]
+                handles, labels = [handles[k] for k in order], [labels[k] for k in order]
             legend = ax.legend(
-                loc='lower right', fontsize=11, handlelength=1.5, handletextpad=0.4,
-                borderaxespad=0., labelspacing=0.5, frameon=False
+                handles, labels, loc=loc, fontsize=11, handlelength=1.5, handletextpad=0.4,
+                borderaxespad=0., labelspacing=0.5, frameon=False,
+                ncol=ncol, columnspacing=0.2
             )
             plt.setp(legend.get_texts(), ha='left', va='center')
             ax.text(
@@ -1390,7 +1598,9 @@ class Plotter():
         H_arr = [0.01, 0.2, 0.5, 1]
         fitax = np.linspace(1, max(alpha_arr), 250)
         # Initialize figure
-        fig, ax = plt.subplots(1,1, figsize=(2.5,2.1/4*3))
+        # fig, axes = plt.subplots(2,1, figsize=(2.75,5.25/4*3))
+        fig, axes = plt.subplots(1, 2, figsize=(2*2.75,2.25/4*3), sharey=True)
+        fig.subplots_adjust(hspace=0.5)
         # Load data & plot as a function of alpha
         for i, H in enumerate(H_arr):
             label = r'$H\rightarrow 1$' if H==1 else rf'$H={H:.2f}$'
@@ -1406,64 +1616,76 @@ class Plotter():
             # Plot
             popt, _ = curve_fit(Plotter.sigmoid, alpha_arr, rho_eff)
             fit = np.minimum(1, Plotter.sigmoid(fitax, *popt))
-            ax.plot(fitax, fit, color=colors[i], linewidth=0.85)
-            ax.plot(
+            axes[0].plot(fitax, fit, color=colors[i], linewidth=0.85)
+            axes[0].plot(
                 [],[], color=colors[i], marker=markers[i], mfc='white',
                 markersize=3, linewidth=0.85, label=label
             )
-            ax.plot(
+            axes[0].plot(
                 alpha_arr, rho_eff, color=colors[i], marker=markers[i], mfc='white',
                 markersize=3, linestyle='none'
             )
         # Load data & plot as a function of H
-        # alpha_arr = [1.1, 1.5, 2.0, 2.5, 3.0]
-        # H_arr = np.loadtxt(_dir+'H.txt')
-        # fitax = np.linspace(0, max(H_arr), 250)
-        # for i, alpha in enumerate(alpha_arr):
-        #     label = r'$\alpha={:.1f}$'.format(alpha)
-        #     # Load data
-        #     suffix = '_T{:d}_N{:d}_M{:d}_rho{:.3f}_' \
-        #         'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}_alpha{:.3f}'.format(
-        #         args.T, args.N0, args.M0, args.rho, 
-        #         args.Lambda_, args.lambda_, args.mu, args.sigma, alpha
-        #     )
-        #     # Load
-        #     _nI = np.load(_rdir+f'num_isolated_patches{suffix}.npy')
-        #     rho_eff = 1 - np.mean(_nI, axis=1) / (args.rho*L**2)
-        #     # Plot
-        #     popt, _ = curve_fit(Plotter.sigmoid, H_arr, rho_eff)
-        #     fit = np.minimum(1, Plotter.sigmoid(fitax, *popt))
-        #     axes[1].plot(fitax, fit, color=colors[i], linewidth=0.85)
-        #     axes[1].plot(
-        #         [],[], color=colors[i], marker=markers[i], mfc='white',
-        #         markersize=3.5, linewidth=0.85, label=label
-        #     )
-        #     axes[1].plot(
-        #         H_arr, rho_eff, color=colors[i], marker=markers[i], mfc='white',
-        #         markersize=3.5, linestyle='none'
-        #     )
+        alpha_arr = [1.1, 1.5, 2.0, 2.5, 3.0]
+        H_arr = np.loadtxt(_dir+'H.txt')
+        fitax = np.linspace(0, max(H_arr), 250)
+        for i, alpha in enumerate(alpha_arr):
+            label = r'$\alpha={:.1f}$'.format(alpha)
+            # Load data
+            suffix = '_T{:d}_N{:d}_M{:d}_rho{:.3f}_' \
+                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}_alpha{:.3f}'.format(
+                args.T, args.N0, args.M0, args.rho, 
+                args.Lambda_, args.lambda_, args.mu, args.sigma, alpha
+            )
+            # Load
+            _nI = np.load(_rdir+f'num_isolated_patches{suffix}.npy')
+            rho_eff = 1 - np.mean(_nI, axis=1) / (args.rho*L**2)
+            # Plot
+            popt, _ = curve_fit(Plotter.sigmoid, H_arr, rho_eff)
+            fit = np.minimum(1, Plotter.sigmoid(fitax, *popt))
+            axes[1].plot(fitax, fit, color=colors[i], linewidth=0.85)
+            axes[1].plot(
+                [],[], color=colors[i], marker=markers[i], mfc=lightcolors[i],
+                markersize=3.5, linewidth=0.85, label=label
+            )
+            axes[1].plot(
+                H_arr, rho_eff, color=colors[i], marker=markers[i], mfc=lightcolors[i],
+                markersize=3.5, linestyle='none'
+            )
         # Helper lines
         # ax.plot([1,1], [0.4,1.05], color='k', linewidth=0.85)
         # ax.plot([1,1], [0.,0.035], color='k', linewidth=0.85)
-        # xlims = [[1,max(alpha_arr)], [0, 1]]
-        # xlabels = [r'$\alpha$', r'$H$']
+        xlims = [[1,max(alpha_arr)], [0, 1]]
+        xlabels = [r'$\alpha$', r'$H$']
         # Limits, labels, etc
-        # for i, ax in enumerate(axes):
-        ax.set_xlim(1,3)
-        ax.xaxis.set_minor_locator(MultipleLocator(0.25))
-        # ax.set_xticks([1+0.5*i for i in range(7)])
-        ax.set_ylim(0, 1.01)
-        ax.yaxis.set_minor_locator(MultipleLocator(0.1))
-        ax.set_yticks([0+0.2*i for i in range(6)])
-        ax.set_xlabel(r'$\alpha$', fontsize=14)
-        ax.set_ylabel(r'$\rho_{\text{eff}}$', fontsize=14)
-        ax.legend(
-            loc='lower left', fontsize=9, labelspacing=0.1, handlelength=1, 
-            borderaxespad=-0.15, handletextpad=0.1, frameon=False
-        )
-        # ax.text(
-        #     0.0, 1.065, figlabels[i], ha='center', fontsize=14, transform=ax.transAxes
-        # )
+        for i, ax in enumerate(axes):
+            ax.set_xlim(xlims[i])
+            xmloc = 0.25 if i == 0 else 0.1
+            ax.xaxis.set_minor_locator(MultipleLocator(xmloc))
+            # ax.set_xticks([1+0.5*i for i in range(7)])
+            ax.set_ylim(0, 1.01)
+            ax.yaxis.set_minor_locator(MultipleLocator(0.1))
+            ax.set_yticks([0+0.2*i for i in range(6)])
+            ax.set_xlabel(xlabels[i], fontsize=14)
+            if i == 0:
+                ax.set_ylabel(r'$\rho_{\text{eff}}$', fontsize=14)
+            ncol = 1 if i == 0 else 2
+            loc = 'lower left' if i == 0 else 'lower right'
+            (handles, labels) = ax.get_legend_handles_labels()
+            if i == 1:                
+                handles.insert(0, plt.Line2D([],[], linestyle='none'))
+                labels.insert(0, '')
+            legend = ax.legend(
+                handles, labels, loc=loc, fontsize=9.5, labelspacing=0.1, handlelength=1, 
+                borderaxespad=-0.15, handletextpad=0.1, frameon=False,
+                ncol=ncol, columnspacing=0.15
+            )
+            # plt.setp(legend.get_texts(), ha='center', va='center')
+            ax.text(
+                0., 1.01, figbflabels[i], ha='left', va='bottom', 
+                fontsize=14, transform=ax.transAxes
+            )
+        fig.subplots_adjust(wspace=0.15, hspace=0.5)
         # Save
         self.figdict[f'rho_effective_rho{args.rho:.2f}'] = fig
     
@@ -1577,12 +1799,17 @@ class Plotter():
         fitax = np.logspace(0, np.log10(args.rho*L**2+1), num=10*args.nbins) / (args.rho*L**2)
         # Initialize figure
         # fig, axes = plt.subplots(2,1, figsize=(4.25/4*3,4.5))
-        fig, axes = plt.subplots(2,1, figsize=(2.75,5.25/4*3))
+        # fig, ax = plt.subplots(1,1, figsize=(2.75,2.25/4*3))
+        fig, axes = plt.subplots(1, 2, figsize=(2*2.75,2.25/4*3), sharey=True)
+        ax = axes[0]
+        axsi = axes[1]
+        # figsi, axsi = plt.subplots(1,1, figsize=(2.75,2.25/4*3))
         # Load patch size xmax
         _max_sizes = np.load(_sizedir+'patch_size_H{:.3f}_rho{:.3f}.npy'.format(args.H, args.rho))
         _max_size = np.mean(_max_sizes) / (args.rho*L**2)
         fitax = fitax[:np.argmax(fitax>_max_size)]
-        # Load & plot for different alpha
+        # Load & plot for different α
+        __i = 0
         for i, alpha in enumerate(alpha_arr):
             # Load 
             suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_' \
@@ -1593,22 +1820,25 @@ class Plotter():
             _P = np.load(_rdir+f'prob_patch_depletion{suffix}.npy')
             P = np.mean(_P, axis=1)
             # Fix color as to accomodate P*
-            color = colors[i] if colors[i] != 'firebrick' else 'darkmagenta'
-            lightcolor = lightcolors[i] if colors[i] != 'firebrick' else 'orchid'
-            marker = markers[i] if colors[i] != 'firebrick' else 'p'
+            if colors[i] == 'firebrick':
+                __i += 1
+            # color = colors[i] if colors[i] != 'firebrick' else 'darkgreen'
+            # lightcolor = lightcolors[i] if colors[i] != 'firebrick' else 'mediumseagreen'
+            # marker = markers[i+1] if colors[i] != 'firebrick' else markers[i]
             # Compute fit 
             popt, _ = curve_fit(Plotter.tanh, np.log10(patchbins), P)            
             fit = np.minimum(1, Plotter.tanh(np.log10(fitax), *popt))
             # Plot
-            axes[0].plot(
-                [],[], color=color, marker=marker, mec=color, mfc=lightcolor,
+            ax.plot(
+                [],[], color=colors[__i], marker=markers[__i], mec=colors[__i], mfc=lightcolors[__i],
                 markersize=3.5, linestyle='--', linewidth=0.85, label=rf'$\alpha={alpha:.1f}$'
             )
-            axes[0].semilogx(fitax, fit, color=color, linewidth=0.85, linestyle='--')
-            axes[0].semilogx(
-                patchbins, P, color=color, marker=marker, mfc=lightcolor,
-                mec=colors[i], markersize=3.5, linestyle='none'
+            ax.semilogx(fitax, fit, color=colors[__i], linewidth=0.85, linestyle='--')
+            ax.semilogx(
+                patchbins, P, color=colors[__i], marker=markers[__i], mfc=lightcolors[__i],
+                mec=colors[__i], markersize=3.5, linestyle='none'
             )
+            __i += 1
         # Plot P for optimal α
         suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_' \
             'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}_alpha{:.3f}'.format(
@@ -1620,26 +1850,26 @@ class Plotter():
         # Compute fit 
         popt, _ = curve_fit(Plotter.tanh, np.log10(patchbins), Pstar)
         fit = np.minimum(1, Plotter.tanh(np.log10(fitax), *popt))
-        axes[0].plot(
+        ax.plot(
             [],[], color='firebrick', marker='D', mfc='white',
             markersize=3.5, linestyle='-', linewidth=0.85
         )
-        axes[0].semilogx(fitax, fit, color='firebrick', linewidth=0.85, linestyle='-')
-        axes[0].semilogx(
+        ax.semilogx(fitax, fit, color='firebrick', linewidth=0.85, linestyle='-')
+        ax.semilogx(
             patchbins, Pstar, color='firebrick', marker='D', mfc='white',
             markersize=3.5, linestyle='none'
         )
-        axes[0].text(
+        ax.text(
             4.5e-4, 0.35, rf'$\alpha={1.195:.2f}$', fontsize=10, rotation=-73,
             ha='center', va='center', color='firebrick'
         )
 
         # Add annotated line at x=xmax
-        axes[0].semilogx(
+        ax.semilogx(
             [_max_size,_max_size], [0, 0.15], color='k', linewidth=0.7, 
             linestyle='--'
         )
-        axes[0].text(
+        ax.text(
             _max_size, 0.18, r'$x_{\text{max}}$', rotation=90, va='bottom', ha='center',
             fontsize=10
         )
@@ -1676,24 +1906,25 @@ class Plotter():
             # label = r'\begin{align*}' + _label + r'\end{align*}'
             label = rf'$H={H:.2f}$' if H < 1 else r'$H\rightarrow 1$'
             # Plot
-            axes[1].plot(
+            axsi.plot(
                 [], [], color=colors[i], marker=markers[i], mfc='white', 
                 mec=colors[i], markersize=3.5, label=label, linewidth=0.85
             )      
-            axes[1].plot(fitax, fit, color=colors[i], linewidth=0.85)
-            axes[1].semilogx(
+            axsi.plot(fitax, fit, color=colors[i], linewidth=0.85)
+            axsi.semilogx(
                 _patchbins, P,  color=colors[i], marker=markers[i], mfc='white', 
                 markersize=3.5, linestyle='none'
             )
         # Helper lines
-        alpha_pos = [2.7e-4, 0.9e-3, 3.3e-3, 2.1e-2][::-1]
+        alpha_pos = [2.2e-4, 0.8e-3, 3.3e-3, 2.1e-2][::-1]
         for i, pos in enumerate(alpha_pos):
-            axes[1].text(
+            axsi.text(
                 pos, 0.35, rf'$\alpha={alpha_arr[i]:.2f}$', fontsize=10, rotation=-73,
                 ha='center', va='center', color=colors[i]
             )
-        for i, ax in enumerate(axes):
-            ax.set_ylabel(r'$P_d$', fontsize=14)
+        for i, ax in enumerate([ax,axsi]):
+            if i == 0:
+                ax.set_ylabel(r'$P_d$', fontsize=14)
             # Limits, labels, etc
             xmax = 1
             ax.set_xlim(1e-5, xmax)
@@ -1704,19 +1935,24 @@ class Plotter():
                 loc='upper right', fontsize=9.5, labelspacing=0.1, handlelength=1.4,
                 borderaxespad=-0.1, handletextpad=0.2, frameon=False
             )
+            # ax.text(
+            #     0., 1.01, figbflabels[i], ha='left', va='bottom', 
+            #     fontsize=14, transform=ax.transAxes
+            # )
+            # Add annotated line at x=1
+            if i == 0:
+                xmin = min(patchbins) if i == 0 else _min_fitax
+                ax.semilogx(
+                    [xmin,xmin], [0,1.05], color='k', linestyle=':', linewidth=0.65
+                )
+                xminloc = 0.1 if i == 0 else 0.05
+                ax.text(
+                    xmin, 0.1, r'$x=1$', rotation=90, ha='center', va='bottom',
+                    fontsize=10, bbox=dict(boxstyle='round', fc='white', alpha=0.85, ec='none', pad=0.1)
+                )
             ax.text(
                 0., 1.01, figbflabels[i], ha='left', va='bottom', 
                 fontsize=14, transform=ax.transAxes
-            )
-            # Add annotated line at x=1
-            xmin = min(patchbins) if i == 0 else _min_fitax
-            ax.semilogx(
-                [xmin,xmin], [0,1.05], color='k', linestyle=':', linewidth=0.65
-            )
-            xminloc = 0.1 if i == 0 else 0.05
-            ax.text(
-                xmin, 0.1, r'$x=1$', rotation=90, ha='center', va='bottom',
-                fontsize=10, bbox=dict(boxstyle='round', fc='white', alpha=0.85, ec='none', pad=0.1)
             )
             # if i == 0:            
             #     ax.semilogx(
@@ -1728,11 +1964,12 @@ class Plotter():
             locmin = matplotlib.ticker.LogLocator(base=10.0, subs=np.arange(2, 10)*.1, numticks=100)
             ax.xaxis.set_minor_locator(locmin)
             ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
-            ax.yaxis.set_minor_locator(MultipleLocator(0.1))
+            ax.yaxis.set_minor_locator(MultipleLocator(0.05))
         
-        fig.subplots_adjust(wspace=0.15, hspace=0.5)
+        # fig.subplots_adjust(wspace=0.15, hspace=0.5)
         # Save 
-        self.figdict[f'habitat_loss_H{args.H:.4f}_rho{args.rho:.2f}'] = fig 
+        self.figdict[f'habitat_loss_rho{args.rho:.2f}'] = fig 
+        # self.figdict[f'habitat_loss_optimal_response_rho{args.rho:.2f}'] = figsi
 
     def plot_effective_habitat_optimal_response(self, args):
         """ Plot the effective habitat under optimal predator or landscape responses """
@@ -1749,7 +1986,9 @@ class Plotter():
         H_arr = np.loadtxt(_dir+'H.txt')
         fitax = np.linspace(0.01,1, 250)
         # Initialize figure
-        fig, axes = plt.subplots(2,1, figsize=(2.5,4.5/4*3), sharex=True)
+        # fig, axes = plt.subplots(2,1, figsize=(2.5,4.5/4*3), sharex=True)
+        fig, axes = plt.subplots(1, 2, figsize=(2*2.75,2.25/4*3))
+        fig.subplots_adjust(wspace=0.35)
         # Load data & plot
         # Load data
         suffix = '_T{:d}_N{:d}_M{:d}_rho{:.3f}_' \
@@ -1835,7 +2074,7 @@ class Plotter():
             ax.xaxis.set_minor_locator(MultipleLocator(0.1))
             ax.tick_params(axis='both', labelsize=9)
             ax.text(
-                0.01, 1.01, figbflabels[i], ha='left', va='bottom',
+                0.0, 1.01, figbflabels[i], ha='left', va='bottom',
                 fontsize=14, transform=ax.transAxes
             )
             ax.yaxis.set_minor_locator(MultipleLocator(yloc[i]))
@@ -1891,8 +2130,10 @@ if __name__ == "__main__":
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
     # Pjotr.plot_lattice_dynamics(args)
-    # Pjotr.plot_fragmented_lattice(args)
-    # Pjotr.plot_patch_distribution(args)
+    Pjotr.plot_fragmented_lattice(args)
+    # Pjotr.plot_patch_distribution(args)  
+    # Pjotr.plot_patch_percolation(args)
+    # Pjotr.plot_lattice_habitat_loss(args)
 
     ## Population density related plots
     # Pjotr.plot_population_densities_fragile(args)
@@ -1901,9 +2142,10 @@ if __name__ == "__main__":
     # Pjotr.plot_population_densities_alpha(args)
     # Pjotr.plot_population_densities_lambda(args)
     # Pjotr.plot_population_densities_sigma(args)
-    Pjotr.plot_population_densities_H(args)
+    # Pjotr.plot_population_densities_H(args)
     # Pjotr.plot_population_phase_space(args)
-    # Pjotr.plot_optimal_values(args)
+    # Pjotr.plot_preferred_fragmentation(args)
+    # Pjotr.plot_species_richness(args)
 
     ## Flight length related plots
     # Pjotr.plot_flight_distribution_Lambda(args)
@@ -1919,5 +2161,8 @@ if __name__ == "__main__":
     else:
         for figname, fig in Pjotr.figdict.items():
             print("Saving {}...".format(figname))
-            fig.savefig("figures/{}.pdf".format(figname), format='pdf', bbox_inches='tight', pad_inches=0.02)
+            fig.savefig(
+                "figures/{}.pdf".format(figname), format='pdf', bbox_inches='tight', 
+                pad_inches=0.01, transparent=True
+            )
         

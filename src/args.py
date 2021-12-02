@@ -96,7 +96,7 @@ class Args():
         )
         ## Analysis variables
         parser.add_argument(
-            '--arg', dest='argument', type=str, default='H',
+            '--arg', dest='argument', type=str, default='dissertation',
             help='specify name of argument "x" for which "f(x)" is computed'
         )
         # Parse arguments

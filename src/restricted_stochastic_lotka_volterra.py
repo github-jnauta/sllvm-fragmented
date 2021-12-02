@@ -54,7 +54,7 @@ def nb_sample_powlaw_discrete(P, xmin=1):
         ----------
         P: np.array(dtype=np.float64)
             The complementary cumulative distribution function of the power law
-            distributed variable x, as Pr(X≥x)
+            distributed variable x, as Pr(X>x)
     """
     # Use binary search to pinpoint the integer k for which:
     # (i)  k ≤ x < k+1
@@ -152,7 +152,7 @@ def nb_SLLVM(
     # Adapt some variables as they should take on a specific value if -1 is provided
     mu = 1 / L if mu == -1 else mu                          # Death rate     
     N0 = np.int64(min(0.2,rho)*L**2) if N0 == -1 else N0    # Initial number of predators
-    # Ensure the complementary CDF of the inverse power law is handles properly
+    # Ensure the complementary CDF of the inverse power law is handled properly
     P = P_reduced if not reduce else P 
 
     ## Initialize constants
@@ -464,7 +464,8 @@ def nb_SLLVM(
                                 bin = np.searchsorted(bins, curr_length[_pred_id])
                                 flight_lengths[bin] += 1
                             curr_length[_pred_id] = 0
-    
+    # Extract the final habitat lattice
+
     return prey_population, pred_population, coexistence, flight_lengths, habitat_efficiency, predators_on_habitat, isolated_patches, empty_labels, lattice_configuration
 
 #################################
@@ -499,8 +500,8 @@ class SLLVM(object):
         if args.alpha == -1 or args.alpha == np.inf:
             P_reduced = P 
         else:
-            norm = zeta(args.alpha, xmin) - zeta(args.alpha, xmax)
-            P_reduced = (zeta(args.alpha, flightlengths) - zeta(args.alpha, xmax))/norm         
+            norm = zeta(args.alpha, xmin) - zeta(args.alpha, xmax+1)
+            P_reduced = (zeta(args.alpha, flightlengths) - zeta(args.alpha, xmax+1))/norm         
         # Initialize dictionary
         outdict = {}
         # Run 
@@ -515,13 +516,16 @@ class SLLVM(object):
         patchbins = np.logspace(0, np.log10(args.rho*L**2+1), num=args.nbins, dtype=np.int64)
         patchbins = np.unique(patchbins)
         patchhist = np.zeros(len(patchbins), dtype=np.int32)
-        patchsizes = np.zeros(len(patchbins))        
+        patchsizes = np.zeros(len(patchbins))    
+        finalsites = sites.flatten()    
         for label in empty_labels:
             bin = np.searchsorted(bins, len(sites_patch_dict[label]))
             patchhist[bin] += 1
         for label, site_indices in sites_patch_dict.items():
             bin = np.searchsorted(bins, len(site_indices))
             patchsizes[bin] += 1
+            if label in empty_labels:
+                finalsites[site_indices] = 0
         prob_patch_depletion = np.ma.divide(patchhist, patchsizes).filled(0)
         # Save
         outdict['prey_population'] = output[0]
@@ -536,6 +540,10 @@ class SLLVM(object):
         outdict['num_reduced_patches'] = num_reduced_patches
         outdict['prob_patch_depletion'] = prob_patch_depletion
         if args.visualize:
+            outdict['init_habitat'] = sites 
+            outdict['final_habitat'] = finalsites.reshape(L,L)
+            # outdict['habitat_indices'] = sites_patch_dict
+            outdict['empty_labels'] = empty_labels
             outdict['lattice'] = output[-1]
         return outdict
 

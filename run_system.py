@@ -35,7 +35,7 @@ if __name__ == "__main__":
         # Save
         if not args.nosave:
             for key, item in output.items():
-                np.save(_dir + "{name:s}{suffix:s}".format(name=key, suffix=suffix), item)
+                np.save(_dir + "{name:s}{suffix:s}.npy".format(name=key, suffix=suffix), item)
 
     # Print some closing statements
     printstr = (
