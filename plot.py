@@ -28,6 +28,7 @@ plt.rcParams.update({
     'text.usetex': True,
     'font.family': 'serif',
     'text.latex.preamble': r'\usepackage{amsfonts}' r'\usepackage{amsmath}' r'\setlength{\jot}{-4pt}'
+    # 'savefig.bbox': 'tight'
 })
 
 # Import modules 
@@ -215,13 +216,14 @@ class Plotter():
         # Store
         self.figdict["initial_lattice"] = fig
 
-    def plot_lattice_habitat_loss(self, args):
+    def plot_lattice_habitat_loss_static(self, args):
         """ Plot example of habitat loss for low and high levels of fragmentation """
         L = 2**args.m 
         # Specify directory
         _dir = args.ddir+f'sllvm/habitat_loss_example/{L}x{L}/'
         H_arr = [0.01, 0.50]
-        alphastar_R = [1.4727, 1.1957]
+        # alphastar_R = [1.4727, 1.1957]
+        alphastar_R = [2., 2.]
         # Initialize figure
         fig, axes = plt.subplots(2,3, figsize=(3,2))
 
@@ -239,12 +241,14 @@ class Plotter():
             _init_habitat = np.load(__dir+f'init_habitat{suffix.format(alpha=3.)}.npy')
             axes[i,0].imshow(_init_habitat, cmap='Greys', interpolation='none')
             # Load & plot for Brownian predators α=3
+            M = np.load(__dir+f'pred_population{suffix.format(alpha=3)}.npy')
             _final_habitat = np.load(__dir+f'final_habitat{suffix.format(alpha=3.)}.npy')   
             axes[i,1].imshow(_final_habitat, cmap='Greys', interpolation='none')
             # Load & plot for optimal predators α*
             alpha = alphastar_R[i] if H == 0.01 else 2.
             _final_habitat = np.load(__dir+f'final_habitat{suffix.format(alpha=alpha)}.npy')
             axes[i,2].imshow(_final_habitat, cmap='Greys', interpolation='none')
+            
         for i in range(len(H_arr)):
             axes[i,0].text(
                 -0.05, 0.5, rf'$H={H_arr[i]:.2f}$', ha='right', va='center',
@@ -272,7 +276,7 @@ class Plotter():
     
         fig.subplots_adjust(wspace=0.1, hspace=0.2)
         # Save
-        self.figdict['example_lattice_habitat_loss'] = fig 
+        self.figdict[f'example_lattice_habitat_loss_seed{args.seed:d}'] = fig 
 
 
     def plot_patch_distribution(self, args):
@@ -498,6 +502,102 @@ class Plotter():
                 _rdir+"gifs/lattice_animation{suffix:s}.gif".format(suffix=suffix),
                 writer='imagemagick', fps=10
             )
+    
+    def plot_lattice_habitat_loss(self, args):
+        """ Plot animated lattice evolution to illustrate habitat loss 
+            Note: currently uses seed 42, as this seed (luckily) has some remaining
+            prey habitat at T
+        """
+        L = 2**args.m 
+        # Specify directory
+        _dir = args.ddir+f'sllvm/habitat_loss_example/{L}x{L}/'
+        H_arr = [0.01, 0.5]
+        alphastar_R = [1.4727, 1.1957]
+
+        # Initialize figures
+        fig, axes = plt.subplots(2,2, figsize=(7,7))
+        finfig, finaxes = plt.subplots(2,2, figsize=(5,5))
+        # Define colormap and norm
+        cmap = matplotlib.colors.ListedColormap(['black', 'white', 'lightgrey', 'red'])
+        bounds=[-1,0,1,1.5,2.5]
+        norm = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
+
+        lattices = np.empty(axes.shape, dtype=object)
+        images = np.empty(axes.shape, dtype=object)
+        for i, H in enumerate(H_arr):
+            __dir = _dir+f'H{H:.4f}/'
+            suffix = (
+                '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_mu{:.4f}_'
+                'Lambda{:.4f}_lambda{:.4f}_sigma{:.4f}_alpha{:s}_seed{:d}'.format(
+                    args.T, args.N0, args.M0, H, args.rho, 
+                    args.mu, args.Lambda_, args.lambda_, args.sigma, '{alpha:.3f}',
+                    args.seed
+                )
+            )
+            # Load lattice for α scale-free
+            _lattice = np.load(__dir+f'lattice{suffix.format(alpha=args.alpha)}.npy')
+            __lattice = _lattice.reshape(L,L,args.nmeasures+1)
+            lattices[i,0] = __lattice
+            images[i,0] = axes[i,0].imshow(__lattice[:,:,0], cmap=cmap, norm=norm, interpolation='none')
+            # Load lattice for α Brownian
+            M = np.load(__dir+f'pred_population{suffix.format(alpha=3)}.npy')
+            _lattice = np.load(__dir+f'lattice{suffix.format(alpha=3)}.npy')
+            __lattice = _lattice.reshape(L,L,args.nmeasures+1)
+            lattices[i,1] = __lattice
+            images[i,1] = axes[i,1].imshow(__lattice[:,:,0], cmap=cmap, norm=norm, interpolation='none')
+
+            # Plot final habitat for α scale-free
+            _final_habitat = np.load(__dir+f'final_habitat{suffix.format(alpha=args.alpha)}.npy')
+            finaxes[i,0].imshow(_final_habitat, cmap='Greys', interpolation='none')
+            # Plot final habitat for α Brownian
+            _final_habitat = np.load(__dir+f'final_habitat{suffix.format(alpha=3)}.npy')
+            finaxes[i,1].imshow(_final_habitat, cmap='Greys', interpolation='none')
+        
+        for _axes in [axes, finaxes]:
+            # Limits, labels, etc
+            for i, ax in enumerate(_axes.flatten()):
+                ax.get_xaxis().set_visible(False)
+                ax.get_yaxis().set_visible(False)
+            # Manually add axis text
+            _axes[0,0].text(
+                -.05, 0.5, r'high fragmentation', rotation=90, color='red', 
+                ha='right', va='center', fontsize=25, transform=_axes[0,0].transAxes
+            )
+            _axes[1,0].text(
+                -.05, 0.5, r'low fragmentation', rotation=90, color='green', 
+                ha='right', va='center', fontsize=25, transform=_axes[1,0].transAxes
+            )
+            _axes[0,0].text(
+                0.5, 1.05, r'high dispersal rate', color='green', 
+                ha='center', va='bottom', fontsize=25, transform=_axes[0,0].transAxes
+            )
+            _axes[0,1].text(
+                0.5, 1.05, r'low dispersal rate', color='red', 
+                ha='center', va='bottom', fontsize=25, transform=_axes[0,1].transAxes
+            )
+
+        # Animate evolution 
+        def update(t):
+            for i, H in enumerate(H_arr):
+                # Update lattice for α scale free
+                lattice_t1 = lattices[i,0][:,:,t]
+                images[i,0].set_array(lattice_t1)
+                # Update lattice for α Brownian
+                lattice_t2 = lattices[i,1][:,:,t]
+                images[i,1].set_array(lattice_t2)
+        anim = animation.FuncAnimation(fig, update, interval=100, frames=args.nmeasures)
+        
+        fig.subplots_adjust(wspace=0.05, hspace=0.05)
+        finfig.subplots_adjust(wspace=0.05, hspace=0.05)
+        if not args.save:
+            plt.show()
+        else:
+            anim.save(f'figures/gifs/habitat_loss_animation.gif', writer='imagemagick', fps=15)
+            # writer = animation.FFMpegWriter(fps=15, bitrate=50000)
+            # anim.save(
+            #     f'figures/gifs/habitat_loss_animation.mp4', writer=writer
+            # )
+            self.figdict['habitat_loss_final'] = finfig
 
     ## Static plots
     def plot_lattice(self, args):
@@ -2130,10 +2230,11 @@ if __name__ == "__main__":
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
     # Pjotr.plot_lattice_dynamics(args)
-    Pjotr.plot_fragmented_lattice(args)
+    # Pjotr.plot_fragmented_lattice(args)
     # Pjotr.plot_patch_distribution(args)  
     # Pjotr.plot_patch_percolation(args)
-    # Pjotr.plot_lattice_habitat_loss(args)
+    # Pjotr.plot_lattice_habitat_loss_static(args)
+    Pjotr.plot_lattice_habitat_loss(args)
 
     ## Population density related plots
     # Pjotr.plot_population_densities_fragile(args)

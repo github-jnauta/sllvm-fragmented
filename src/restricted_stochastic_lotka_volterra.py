@@ -258,9 +258,9 @@ def nb_SLLVM(
 
         ## Stop the simulation if:
         # (i) Prey goes extinct, as predators will also go extinct
-        if M == 0:
-            coexistence = 0
-            break
+        # if M == 0:
+        #     coexistence = 0
+        #     break
         # (ii) One can, in principle, also finish the simulation as predators go extinct,
         # as it leads to the other zero-abundance stable state of prey proliferation.
         # However, as habitat becomes (increasingly) fragmented, i.e. some habitat has
@@ -464,7 +464,6 @@ def nb_SLLVM(
                                 bin = np.searchsorted(bins, curr_length[_pred_id])
                                 flight_lengths[bin] += 1
                             curr_length[_pred_id] = 0
-    # Extract the final habitat lattice
 
     return prey_population, pred_population, coexistence, flight_lengths, habitat_efficiency, predators_on_habitat, isolated_patches, empty_labels, lattice_configuration
 
@@ -517,7 +516,7 @@ class SLLVM(object):
         patchbins = np.unique(patchbins)
         patchhist = np.zeros(len(patchbins), dtype=np.int32)
         patchsizes = np.zeros(len(patchbins))    
-        finalsites = sites.flatten()    
+        finalsites = sites.flatten()
         for label in empty_labels:
             bin = np.searchsorted(bins, len(sites_patch_dict[label]))
             patchhist[bin] += 1
