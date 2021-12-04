@@ -144,16 +144,16 @@ class Plotter():
             ax.get_yaxis().set_visible(False)
             # r"$\rho={:.1f}$".format(_rho[i])
             # r"H={:.2f}".format(_H[i])
-            # ax.text(
-            #     0.05, 0.925, rf'H={_H[i]:.2f}', transform=ax.transAxes, 
-            #     ha='left', va='top', fontsize=12.5, 
-            #     bbox=dict(boxstyle="round", ec='none', fc='white')
-            # )
-            # if i == 0:
-            #     ax.text(
-            #         0.01, 1.01, figbflabels[i], ha='left', va='bottom',
-            #         fontsize=14, transform=ax.transAxes
-            #     )
+            ax.text(
+                0.05, 0.925, rf'H={_H[i]:.2f}', transform=ax.transAxes, 
+                ha='left', va='top', fontsize=12.5, 
+                bbox=dict(boxstyle="round", ec='none', fc='white')
+            )
+            if i == 0:
+                ax.text(
+                    0.01, 1.01, figbflabels[i], ha='left', va='bottom',
+                    fontsize=14, transform=ax.transAxes
+                )
         # axpdf.set_xlim(1e-6, 1)
         # axpdf.set_ylim(1e-6,1.05)
         # locmin = matplotlib.ticker.LogLocator(base=10.0,subs=(0.2,0.4,0.6,0.8),numticks=12)
