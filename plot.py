@@ -2230,11 +2230,11 @@ if __name__ == "__main__":
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
     # Pjotr.plot_lattice_dynamics(args)
-    # Pjotr.plot_fragmented_lattice(args)
+    Pjotr.plot_fragmented_lattice(args)
     # Pjotr.plot_patch_distribution(args)  
     # Pjotr.plot_patch_percolation(args)
     # Pjotr.plot_lattice_habitat_loss_static(args)
-    Pjotr.plot_lattice_habitat_loss(args)
+    # Pjotr.plot_lattice_habitat_loss(args)
 
     ## Population density related plots
     # Pjotr.plot_population_densities_fragile(args)
