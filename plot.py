@@ -118,7 +118,8 @@ class Plotter():
         _rho = [0.1, 0.2, 0.5, 0.9]
         L = 2**args.m
         # Initialize figure
-        fig, axes = plt.subplots(1,4, figsize=(4*1.525,3))
+        # fig, axes = plt.subplots(1,4, figsize=(4*1.525,3))
+        fig, axes = plt.subplots(2,2, figsize=(3,3))
         figpdf, axpdf = plt.subplots(1,1, figsize=(2*4/3,2), tight_layout=True)
         _axes = axes.flatten()
         # Specify bins for distribution plot
@@ -130,29 +131,29 @@ class Plotter():
             suffix = "_{L:d}x{L:d}_H{H:.3f}_rho{rho:.3f}".format(L=L, H=H, rho=args.rho)
             lattice = np.load(_dir+"lattice{suffix:s}.npy".format(suffix=suffix))
             _axes[i].imshow(lattice, cmap='Greys', interpolation='none')
-            # pdfsuffix = '_H{:.3f}_rho{:.3f}'.format(H, args.rho)
-            # pdf = np.load(_pdfdir+f'patch_distribution{pdfsuffix}.npy')
-            # CCDF = np.cumsum(pdf[::-1])[::-1]
-            # axpdf.loglog(
-            #     bins/(L**2), CCDF, color='k', marker=markers[i], mfc='white', mec='k',
-            #     markersize=3, label=r'$H=%.2f$'%(H), linewidth=0.85, markevery=2
-            # )
+            pdfsuffix = '_H{:.3f}_rho{:.3f}'.format(H, args.rho)
+            pdf = np.load(_pdfdir+f'patch_distribution{pdfsuffix}.npy')
+            CCDF = np.cumsum(pdf[::-1])[::-1]
+            axpdf.loglog(
+                bins/(L**2), CCDF, color='k', marker=markers[i], mfc='white', mec='k',
+                markersize=3, label=r'$H=%.2f$'%(H), linewidth=0.85, markevery=2
+            )
         # Limits, labels, etc
         for i, ax in enumerate(_axes):
             ax.get_xaxis().set_visible(False)
             ax.get_yaxis().set_visible(False)
             # r"$\rho={:.1f}$".format(_rho[i])
             # r"H={:.2f}".format(_H[i])
-            ax.text(
-                0.05, 0.925, rf'H={_H[i]:.2f}', transform=ax.transAxes, 
-                ha='left', va='top', fontsize=12.5, 
-                bbox=dict(boxstyle="round", ec='none', fc='white')
-            )
-            if i == 0:
-                ax.text(
-                    0.01, 1.01, figbflabels[i], ha='left', va='bottom',
-                    fontsize=14, transform=ax.transAxes
-                )
+            # ax.text(
+            #     0.05, 0.925, rf'H={_H[i]:.2f}', transform=ax.transAxes, 
+            #     ha='left', va='top', fontsize=12.5, 
+            #     bbox=dict(boxstyle="round", ec='none', fc='white')
+            # )
+            # if i == 0:
+            #     ax.text(
+            #         0.01, 1.01, figbflabels[i], ha='left', va='bottom',
+            #         fontsize=14, transform=ax.transAxes
+            #     )
         # axpdf.set_xlim(1e-6, 1)
         # axpdf.set_ylim(1e-6,1.05)
         # locmin = matplotlib.ticker.LogLocator(base=10.0,subs=(0.2,0.4,0.6,0.8),numticks=12)
