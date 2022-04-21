@@ -1,7 +1,10 @@
 """ Plot stuff """
 # Import necessary libraries
 import enum
+from math import dist
 from os import MFD_ALLOW_SEALING
+from matplotlib import transforms
+from matplotlib.colors import ListedColormap
 import numpy as np 
 import matplotlib
 import matplotlib.pyplot as plt 
@@ -17,7 +20,7 @@ import colorsys
 
 import warnings
 from scipy import integrate
-from scipy.ndimage.interpolation import rotate
+# from scipy.ndimage.interpolation import rotate
 from scipy.optimize import curve_fit, minimize
 from scipy.interpolate import interp1d
 from scipy.stats import gmean, lognorm
@@ -121,6 +124,8 @@ class Plotter():
         # fig, axes = plt.subplots(1,4, figsize=(4*1.525,3))
         fig, axes = plt.subplots(2,2, figsize=(3,3))
         figpdf, axpdf = plt.subplots(1,1, figsize=(2*4/3,2), tight_layout=True)
+        fignofrag, axnofrag = plt.subplots(1,1, figsize=(2,2), tight_layout=True)
+        figfrag, axfrag = plt.subplots(1,1, figsize=(2,2), tight_layout=True)
         _axes = axes.flatten()
         # Specify bins for distribution plot
         bins = np.logspace(0, np.log10(0.1*L**2+1), num=args.nbins, dtype=np.int64)
@@ -138,6 +143,10 @@ class Plotter():
                 bins/(L**2), CCDF, color='k', marker=markers[i], mfc='white', mec='k',
                 markersize=3, label=r'$H=%.2f$'%(H), linewidth=0.85, markevery=2
             )
+            if H == 0.99:
+                axnofrag.imshow(lattice, cmap='Greys', interpolation='none')
+            if H == 0.01:
+                axfrag.imshow(lattice, cmap='Greys', interpolation='none')
         # Limits, labels, etc
         for i, ax in enumerate(_axes):
             ax.get_xaxis().set_visible(False)
@@ -154,6 +163,10 @@ class Plotter():
                     0.01, 1.01, figbflabels[i], ha='left', va='bottom',
                     fontsize=14, transform=ax.transAxes
                 )
+        axnofrag.get_xaxis().set_visible(False)
+        axnofrag.get_yaxis().set_visible(False)
+        axfrag.get_xaxis().set_visible(False)
+        axfrag.get_yaxis().set_visible(False)
         # axpdf.set_xlim(1e-6, 1)
         # axpdf.set_ylim(1e-6,1.05)
         # locmin = matplotlib.ticker.LogLocator(base=10.0,subs=(0.2,0.4,0.6,0.8),numticks=12)
@@ -174,6 +187,8 @@ class Plotter():
         # Store
         fig.subplots_adjust(wspace=0.03, hspace=0.03)
         self.figdict[f'example_lattices_rho{args.rho:.1f}'] = fig 
+        self.figdict[f'example_lattice_nofrag'] = fignofrag
+        self.figdict[f'example_lattice_frag'] = figfrag
         # self.figdict[f'patch_size_distribution_rho{args.rho:.1f}'] = figpdf
 
 
@@ -516,10 +531,12 @@ class Plotter():
         alphastar_R = [1.4727, 1.1957]
 
         # Initialize figures
+        singlefig, sax = plt.subplots(1,1, figsize=(3.5,3.5))
         fig, axes = plt.subplots(2,2, figsize=(7,7))
-        finfig, finaxes = plt.subplots(2,2, figsize=(5,5))
+        finfig, finaxes = plt.subplots(2,2, figsize=(7,7))
+        presfig, presaxes = plt.subplots(1,1,figsize=(4,4), tight_layout=True)
         # Define colormap and norm
-        cmap = matplotlib.colors.ListedColormap(['black', 'white', 'lightgrey', 'red'])
+        cmap = matplotlib.colors.ListedColormap(['cornflowerblue', 'white', 'lightgrey', 'black'])
         bounds=[-1,0,1,1.5,2.5]
         norm = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
 
@@ -540,6 +557,10 @@ class Plotter():
             __lattice = _lattice.reshape(L,L,args.nmeasures+1)
             lattices[i,0] = __lattice
             images[i,0] = axes[i,0].imshow(__lattice[:,:,0], cmap=cmap, norm=norm, interpolation='none')
+            presim = presaxes.imshow(__lattice[:,:,0], cmap=cmap, norm=norm, interpolation='none')
+            # Plot final lattice seperately (for the presentation)
+            if H == 0.5:
+                sax.imshow(__lattice[:,:,-1], cmap=cmap, norm=norm, interpolation='none')
             # Load lattice for α Brownian
             M = np.load(__dir+f'pred_population{suffix.format(alpha=3)}.npy')
             _lattice = np.load(__dir+f'lattice{suffix.format(alpha=3)}.npy')
@@ -554,6 +575,11 @@ class Plotter():
             _final_habitat = np.load(__dir+f'final_habitat{suffix.format(alpha=3)}.npy')
             finaxes[i,1].imshow(_final_habitat, cmap='Greys', interpolation='none')
         
+        sax.get_xaxis().set_visible(False)
+        sax.get_yaxis().set_visible(False)
+        presaxes.get_xaxis().set_visible(False)
+        presaxes.get_yaxis().set_visible(False)
+
         for _axes in [axes, finaxes]:
             # Limits, labels, etc
             for i, ax in enumerate(_axes.flatten()):
@@ -576,7 +602,25 @@ class Plotter():
                 0.5, 1.05, r'low dispersal rate', color='red', 
                 ha='center', va='bottom', fontsize=25, transform=_axes[0,1].transAxes
             )
-
+        # Legend
+        labels = [r'resource', r'matrix', r'habitat', r'forager', r'']
+        colors = [images[0,0].cmap(images[0,0].norm(value)) for value in bounds[:-1]]
+        patches = [
+            matplotlib.patches.Patch(ec='k', fc=colors[i], label=labels[i])
+            for i in range(len(bounds)-1)
+        ]
+        axes[0,1].legend(
+            handles=patches, loc='upper right', fontsize=11,
+            handlelength=1, handleheight=1, ncol=2, columnspacing=0.5
+        )
+        presaxes.legend(
+            handles=patches, loc='upper right', fontsize=11,
+            handlelength=1, handleheight=1, ncol=2, columnspacing=0.5
+        )
+        # Adjust 
+        fig.subplots_adjust(left=0.08, bottom=0.05, right=0.95, top=0.92, wspace=0.05, hspace=0.05)
+        singlefig.subplots_adjust(left=0.08, bottom=0.05, right=0.95, top=0.92)
+        finfig.subplots_adjust(left=0.08, bottom=0.05, right=0.95, top=0.92, wspace=0.05, hspace=0.05)
         # Animate evolution 
         def update(t):
             for i, H in enumerate(H_arr):
@@ -586,19 +630,24 @@ class Plotter():
                 # Update lattice for α Brownian
                 lattice_t2 = lattices[i,1][:,:,t]
                 images[i,1].set_array(lattice_t2)
-        anim = animation.FuncAnimation(fig, update, interval=100, frames=args.nmeasures)
+        def update_pres(t):
+            # Update lattice for α scale free
+            lattice_t1 = lattices[0,0][:,:,t]
+            presim.set_array(lattice_t1)
+        anim = animation.FuncAnimation(fig, update, interval=100, frames=100)
+        # presanim = animation.FuncAnimation(presfig, update_pres, interval=100, frames=100)
         
-        fig.subplots_adjust(wspace=0.05, hspace=0.05)
-        finfig.subplots_adjust(wspace=0.05, hspace=0.05)
         if not args.save:
             plt.show()
         else:
-            anim.save(f'figures/gifs/habitat_loss_animation.gif', writer='imagemagick', fps=15)
-            # writer = animation.FFMpegWriter(fps=15, bitrate=50000)
-            # anim.save(
-            #     f'figures/gifs/habitat_loss_animation.mp4', writer=writer
-            # )
-            self.figdict['habitat_loss_final'] = finfig
+            # anim.save(f'figures/gifs/habitat_loss_animation.gif', writer='imagemagick', fps=10)
+            # presanim.save(f'figures/gifs/habitat_loss_animation_presentation.gif', writer='imagemagick', fps=10)
+            writer = animation.FFMpegWriter(fps=15, bitrate=50000)
+            anim.save(
+                f'figures/gifs/habitat_loss_animation.mp4', writer=writer
+            )
+            # self.figdict['habitat_loss_final'] = finfig
+            # self.figdict['habitat_loss_single'] = singlefig
 
     ## Static plots
     def plot_lattice(self, args):
@@ -858,9 +907,11 @@ class Plotter():
         idx_2 = np.argmax(alpha_arr==2.)
         # H_arr = np.loadtxt(_dir+'H.txt')
         H_arr = [0.01, 0.1, 0.2, 0.5, 1.0][::-1]
+        # H_arr = [1.0, 0.01]
         # Initialize figure
         # fig, axes = plt.subplots(1,3, figsize=(8,2/4*3))
         fig, axes = plt.subplots(2,1, figsize=(2.5,4.5/4*3), sharex=True)
+        presfig, presaxes = plt.subplots(1,1, figsize=(2.75,2), tight_layout=True)
         axloss = axes[0].inset_axes([0.575,0.485,0.4,0.475])
         # figR, axR = plt.subplots(1,1, figsize=(3.5,3.5/4*3), tight_layout=True)
         # Load data & plot 
@@ -888,6 +939,14 @@ class Plotter():
                 alpha_arr, M, color=colors[_i], marker=markers[_i], mfc='white',
                 markersize=3.5, linewidth=0.85, label=label, zorder=len(H_arr)-_i
             )
+            presaxes.plot(
+                alpha_arr, N, color=colors[_i], marker=markers[_i], mfc='white',
+                markersize=3.5, linewidth=0.85, label=label, zorder=len(H_arr)-_i
+            )
+            # presaxes[1].plot(
+            #     alpha_arr, M, color=colors[_i], marker=markers[_i], mfc='white',
+            #     markersize=3.5, linewidth=0.85, label=label, zorder=len(H_arr)-_i
+            # )
             # _D = (Plotter.true_diversity(_N, _M, q=1)-1)
             # _R = _D * (_N+_M)
             # R = np.mean(_R, axis=1)
@@ -903,6 +962,10 @@ class Plotter():
                 _alpha_max = alpha_arr[np.argmax(N==np.max(N))]
                 # for ax in [axes[0], axes[2]]:
                 axes[0].plot(
+                    [_alpha_max, _alpha_max], [0,1], linestyle='--', linewidth=0.9,
+                    color='k', zorder=-1
+                )
+                presaxes.plot(
                     [_alpha_max, _alpha_max], [0,1], linestyle='--', linewidth=0.9,
                     color='k', zorder=-1
                 )
@@ -937,9 +1000,9 @@ class Plotter():
         # Limits, labels, etc, for remaining axes
         xlim = [1,2] if args.compute else [1,max(alpha_arr)]
         ylabels = [r'$N$', r'$M$', r'$\mathcal{R}$']
-        ylims = [args.rho/2, 1.05*args.rho, 1.05*args.rho]        
-        _axes = [ax for ax in axes]
-        for i, ax in enumerate(_axes):
+        ylims = [args.rho/2, 1.05*args.rho, 1.05*args.rho]       
+        
+        for i, ax in enumerate(axes):
             if i == 0:
                 ax.annotate(
                     r'$\alpha^*_{H\rightarrow 1}$', xy=(_alpha_max, 0.0925), xytext=(1.675,0.0925),
@@ -957,7 +1020,7 @@ class Plotter():
             ax.text(
                 0.01, 1., figbflabels[i], ha='left', va='bottom', fontsize=14,
                 transform=ax.transAxes
-            )
+            )            
             if i == 1:
                 ax.set_xlabel(r'$\alpha$', fontsize=14)
                 ax.legend(
@@ -965,10 +1028,36 @@ class Plotter():
                     handletextpad=0.1, borderaxespad=0.1, handlelength=1,
                     columnspacing=0.2, frameon=False
                 )
+
+        ylabels = [r'forager population', r'resource population', r'$\mathcal{R}$']
+        # for i, ax in enumerate(presaxes):
+        i = 0
+        ax = presaxes
+        ax.annotate(
+            r'$\alpha^*_{H\rightarrow 1}$', xy=(_alpha_max, 0.0925), xytext=(1.675,0.0925),
+            ha='center', va='center', arrowprops=dict(arrowstyle='->'), fontsize=10.5
+        )     
+        ax.set_xlim(xlim)
+        ax.set_xticks([1., 1.5, 2., 2.5, 3.])
+        ax.xaxis.set_minor_locator(MultipleLocator(0.1))
+        ax.set_yticks([0,0.1,0.2])
+        mloc = 0.025 if i == 0 else 0.05
+        ax.yaxis.set_minor_locator(MultipleLocator(mloc))
+        # ax.set_xticks([1+0.5*i for i in range(7)])
+        ax.set_ylim(0, ylims[i])
+        ax.set_ylabel(ylabels[i], fontsize=14)     
+        ax.set_xlabel(r'L\'evy parameter $\alpha$', fontsize=15)
+        ax.legend(
+            loc='upper right', fontsize=11, ncol=1, labelspacing=0.1,
+            handletextpad=0.1, borderaxespad=0.1, handlelength=1,
+            columnspacing=0.2, frameon=False
+        )
                 
         fig.subplots_adjust(wspace=0.03)
+        # presfig.subplots_adjust(wspace=0.03,hspace=0.03)
         # Save
-        self.figdict[f'population_densities_alpha_rho{args.rho}'] = fig 
+        # self.figdict[f'population_densities_alpha_rho{args.rho}'] = fig 
+        self.figdict[f'population_densities_presentation'] = presfig 
         # self.figdict[f'richness_alpha_rho{args.rho}'] = figR
 
     def plot_species_richness(self, args):
@@ -1055,6 +1144,7 @@ class Plotter():
                     handletextpad=0.2, handlelength=0.9, borderaxespad=-0.1,
                     ncol=2, columnspacing=0.2
                 )
+                ax.set_xticks([0.,0.2,0.4,0.6,0.8,1.0])
             xloc = 0.1 if i == 0 else 0.05
             ax.xaxis.set_minor_locator(MultipleLocator(xloc))
             ax.yaxis.set_minor_locator(MultipleLocator(0.025))
@@ -1606,6 +1696,211 @@ class Plotter():
         # Save
         self.figdict[f'optimalvalues_rho{args.rho}'] = fig
 
+    ###############################
+    # Phase diagram related plots #
+    def plot_phase_diagram(self, args):
+        """ Plot a phase diagram that displays the interplay between 
+            predator dispersal and habitat fragmentation (per se)
+            * extracts data from simulation results to indicate
+              qualitatively precise 'phase transitions'
+        """
+        # Import additional libraries
+        import shapely.geometry as geom 
+        # Specify constants
+        L = 2**args.m
+        # Specify directory        
+        _dir = args.rdir+'sllvm/alpha/'
+        _rdir = args.rdir+'sllvm/alpha/{L:d}x{L:d}/'.format(L=L)
+
+        # Load variables
+        alpha_arr = np.loadtxt(_dir+'alpha.txt')
+        alpha_plot = np.linspace(1,3,128)
+        # H_arr = np.loadtxt(_dir+'H.txt')
+        H_arr = [0.01, 0.1, 0.2, 0.5, 1.0][::-1]
+        H_plot = np.linspace(0,1,128)
+
+        # Allocate
+        alpha_star = np.zeros(len(H_arr))
+        alpha_zero_left = np.zeros(len(H_arr))      # α0 with α0<α*
+        alpha_zero_right = np.zeros(len(H_arr))     # α0 with α0>α*
+        
+        # Initialize figure
+        fig, ax = plt.subplots(1,1, figsize=(4,3), tight_layout=True)
+        # Specify cut-off variables
+        eps = 1e-2
+
+        for i, H in enumerate(H_arr):
+            # Load data
+            suffix = '_T{:d}_N{:d}_M{:d}_H{:.4f}_rho{:.3f}_' \
+                'Lambda{:.4f}_lambda{:.4f}_mu{:.4f}_sigma{:.4f}'.format(
+                args.T, args.N0, args.M0, H, 
+                args.rho, args.Lambda_, args.lambda_, args.mu, args.sigma
+            )
+            _N = np.load(_rdir+'N{:s}.npy'.format(suffix)) / L**2
+            N = np.mean(_N, axis=1)
+            # Find α for which N (M, or R) is maximal
+            _idx = np.argmax(N)
+            alpha_star[i] = alpha_arr[_idx]
+            # Find α for which N (M, or R) is zero (both left and right)
+            _idx_l = _idx - np.argmax(N[:_idx][::-1] <= eps)
+            alpha_zero_left[i] = alpha_arr[_idx_l]
+            __idx_r = np.argmax(N[_idx:] <= eps)
+            _idx_r = _idx + __idx_r if __idx_r != 0 else -1
+            alpha_zero_right[i] = alpha_arr[_idx_r]
+        # Slightly adapt α0 before fitting
+        alpha_zero_left[0] = 1.01
+        # Fit exponential curves
+        # Note that fitting might not work when the cutoff changes
+        # (as the chosen exponential function is rather arbitrary)
+        def neg_exp(x, A, B, C):
+            return A*np.exp(-B*x) + C
+        def pos_exp(x, A, B, C):
+            return A*np.exp(B*x) + C
+        _popt_alpha_star, _ = curve_fit(neg_exp, alpha_star, H_arr)
+        _popt_alpha_left, _ = curve_fit(neg_exp, alpha_zero_left, H_arr)
+        _popt_alpha_right, _ = curve_fit(pos_exp, alpha_zero_right, H_arr)
+
+        # Plot different 'phases' as H against α        
+        ax.plot(
+            alpha_plot, neg_exp(alpha_plot, *_popt_alpha_star), color='k', 
+            linewidth=1.5
+        )
+        ax.plot(
+            alpha_plot, neg_exp(alpha_plot, *_popt_alpha_left), color='k', 
+            linewidth=1.15, linestyle='--', alpha=.5
+        )
+        ax.plot(
+            alpha_plot, pos_exp(alpha_plot, *_popt_alpha_right), 
+            color='k', linewidth=1.15, linestyle='--', alpha=.5
+        )
+
+        # Limits, labels, etc
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xlim(1,3)
+        ax.set_ylim(1,0)
+
+        # Fill the distinct regions with a desired gradient color
+        cm_top = matplotlib.cm.get_cmap('Reds_r', 128)
+        cm_bot = matplotlib.cm.get_cmap('Blues', 128)
+        newcolors = np.vstack((
+            cm_top(np.linspace(0,1,128)),
+            cm_bot(np.linspace(0,1,128))
+        ))
+        cmap = ListedColormap(newcolors, name='OrangeBlue')
+        # norm = StretchOutNormalize(vmin=-1, vmax=1, low=-.005, up=.005)
+        # norm = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
+        # norm = np.ma.masked_array(np.interp())
+        # Generate mesh with values equal to the distance to the fitted curve
+        x = alpha_plot
+        funcs = [neg_exp, pos_exp]
+        popt = [_popt_alpha_left, _popt_alpha_right]
+        dist_to_curve = np.zeros((len(alpha_plot), len(H_plot)))
+        for s in range(2):
+            y = funcs[s](alpha_plot, *popt[s])
+            line_l = geom.LineString([(_x,_y) for _x,_y in zip(x,y)])
+            _dist_to_curve = np.zeros((len(alpha_plot), len(H_plot)))
+            for i, a in enumerate(alpha_plot):
+                for j, h in enumerate(H_plot):
+                    point = geom.Point(a,h)
+                    _dist_to_curve[i,j] = np.sign(y[i]-h)*line_l.distance(point)
+            _dist_to_curve[_dist_to_curve<0.] = 0.
+            _dist_to_curve /= np.max(_dist_to_curve)
+            dist_to_curve += (-1)**(s+2) * _dist_to_curve
+        gradient = ax.imshow(
+            dist_to_curve.T, cmap=cmap, vmin=-1, vmax=1,
+            aspect='auto', extent=(1,3,1,0), origin='upper'
+        )
+        
+        # x-axis
+        ax.text(
+            .5, -.2, r'predator dispersal', fontsize=14, ha='center',
+            transform=ax.transAxes
+        )
+        text1 = ax.text(
+            0., -.065, r'exploration', fontsize=11, ha='left',
+            transform=ax.transAxes
+        )
+        ax.text(
+            1., -.065, r'exploitation', fontsize=11, ha='right',
+            transform=ax.transAxes
+        )
+        ax.text(
+            .5, -.1, r'increasing $\alpha$', fontsize=10, ha='center',
+            transform=ax.transAxes
+        )
+        ax.annotate(
+            r'', xy=(.3,-0.045), xytext=(.685,-0.045),
+            xycoords='axes fraction', transform=ax.transAxes,
+            ha='center', va='center', 
+            arrowprops=dict(arrowstyle="<-", linewidth=.7)
+        )
+        # y-axis
+        ax.text(
+            -.15, .5, r'habitat fragmentation', fontsize=14, ha='center',
+            va='center', rotation=90, transform=ax.transAxes
+        )
+        ax.text(
+            -.01, 0., r'low', fontsize=11, ha='right', va='bottom',
+            transform=ax.transAxes
+        )
+        ax.text(
+            -.01, 1., r'high', fontsize=11, ha='right', va='top',
+            transform=ax.transAxes
+        )
+        ax.text(
+            -.075, .5, r'decreasing $H$', fontsize=10, ha='center',
+            va='center', rotation=90, transform=ax.transAxes
+        )
+        ax.annotate(
+            r'', xy=(-0.05,0.1), xytext=(-0.05,.9),
+            xycoords='axes fraction', transform=ax.transAxes,
+            ha='center', va='center', rotation=90,
+            arrowprops=dict(arrowstyle="<-", linewidth=.7)
+        )
+        # Text within figure
+        ax.text(
+            0.06, 0.9, r'I', ha='center', va='center', fontsize=11,
+            transform=ax.transAxes, 
+            bbox=dict(boxstyle='circle', fc='white')
+        )
+        ax.text(
+            0.4, 0.3, r'II', ha='center', va='center', fontsize=11,
+            transform=ax.transAxes, 
+            bbox=dict(boxstyle='circle', fc='white')
+        )
+        ax.text(
+            0.85, 0.7, r'III', ha='center', va='center', fontsize=11,
+            transform=ax.transAxes, 
+            bbox=dict(boxstyle='circle', fc='white')
+        )
+        # Add colorbar
+        cbar = fig.colorbar(
+            gradient, ax=ax, shrink=0.8, orientation='vertical', 
+            aspect=30, pad=.05
+        )
+        # cbar = matplotlib.colorbar.ColorbarBase(
+        #     ax, cmap=cmap, norm=norm, orientation='vertical', spacing='proportional'
+        # )
+        cbar.set_ticks([])
+        cbar.ax.invert_yaxis()
+        cbar.set_label(r'habitat loss', fontsize=12)
+        cbar.ax.text(
+            -.5, 0, r'low', fontsize=8, ha='right', va='bottom',
+            transform=cbar.ax.transAxes, rotation=90
+        )
+        cbar.ax.text(
+            -.5, .5, r'moderate', fontsize=8, ha='right', va='center',
+            transform=cbar.ax.transAxes, rotation=90
+        )
+        cbar.ax.text(
+            -.5, 1, r'high', fontsize=8, ha='right', va='top',
+            transform=cbar.ax.transAxes, rotation=90
+        )
+
+        self.figdict['phase_diagram'] = fig 
+
+
     ###########################
     # Levy walk related plots #
     def plot_predator_positions(self, args):
@@ -1631,6 +1926,7 @@ class Plotter():
         # Limits, labels, etc
         ax.set_xlim(0, L)
         ax.set_ylim(0, L)
+
     
     ################################
     # Flight length related plots #
@@ -1769,11 +2065,14 @@ class Plotter():
             ax.set_yticks([0+0.2*i for i in range(6)])
             ax.set_xlabel(xlabels[i], fontsize=14)
             if i == 0:
+                ax.xaxis.set_minor_locator(MultipleLocator(0.1))
                 ax.set_ylabel(r'$\rho_{\text{eff}}$', fontsize=14)
             ncol = 1 if i == 0 else 2
             loc = 'lower left' if i == 0 else 'lower right'
             (handles, labels) = ax.get_legend_handles_labels()
-            if i == 1:                
+            if i == 1:
+                ax.set_xticks([0,0.2,0.4,0.6,0.8,1.])
+                ax.xaxis.set_minor_locator(MultipleLocator(0.05))
                 handles.insert(0, plt.Line2D([],[], linestyle='none'))
                 labels.insert(0, '')
             legend = ax.legend(
@@ -2152,13 +2451,13 @@ class Plotter():
         # Limits, labels, etc
         axes[0].set_ylabel(r'$\rho_{\text{eff}}^*$', fontsize=14)
         axes[1].set_ylabel(r'population density', fontsize=11)
-        axes[1].set_xlabel(r'$H$', fontsize=14)
         axes[0].set_ylim(0.5,1.015)
         axes[0].set_yticks([0.5,0.6,0.7,0.8,0.9,1.0])
         axes[1].set_ylim(0,0.15)
-        axes[1].set_xticks([0,0.2,0.4,0.6,0.8,1.])
         yloc = [0.05, 0.025]
         for i, ax in enumerate(axes):
+            ax.set_xticks([0,0.2,0.4,0.6,0.8,1.])
+            ax.set_xlabel(r'$H$', fontsize=14)
             ax.set_xlim(0,1)
             ncol = 1 if i == 0 else 2
             handles, labels = ax.get_legend_handles_labels()
@@ -2172,7 +2471,7 @@ class Plotter():
                 borderaxespad=0.1, labelspacing=0.2, fontsize=11, ncol=ncol, 
                 columnspacing=0.3, bbox_to_anchor=bbox
             )
-            ax.xaxis.set_minor_locator(MultipleLocator(0.1))
+            ax.xaxis.set_minor_locator(MultipleLocator(0.05))
             ax.tick_params(axis='both', labelsize=9)
             ax.text(
                 0.0, 1.01, figbflabels[i], ha='left', va='bottom',
@@ -2231,8 +2530,8 @@ if __name__ == "__main__":
     # Pjotr.plot_lattice(args)
     # Pjotr.plot_predator_positions(args)
     # Pjotr.plot_lattice_dynamics(args)
-    Pjotr.plot_fragmented_lattice(args)
-    # Pjotr.plot_patch_distribution(args)  
+    # Pjotr.plot_fragmented_lattice(args)
+    # Pjotr.plot_patch_distribution(args)
     # Pjotr.plot_patch_percolation(args)
     # Pjotr.plot_lattice_habitat_loss_static(args)
     # Pjotr.plot_lattice_habitat_loss(args)
@@ -2248,6 +2547,7 @@ if __name__ == "__main__":
     # Pjotr.plot_population_phase_space(args)
     # Pjotr.plot_preferred_fragmentation(args)
     # Pjotr.plot_species_richness(args)
+    Pjotr.plot_phase_diagram(args)
 
     ## Flight length related plots
     # Pjotr.plot_flight_distribution_Lambda(args)
